@@ -1,0 +1,23 @@
+#!/bin/bash
+PID=$$
+L=$(uname -n)
+if [ -z $* ]; then exit 1; fi
+exec 5<>/dev/tcp/$L/9043
+echo -e "a${#PID}$PID$*" >&5 
+answer=$(cat <&5)
+exec 5<&-
+exec 5>&-
+if [[ $answer == "O" ]];
+then
+    while true; do sleep 365d; done
+else
+    echo "Can't connect to the daemon"
+    exit 1
+fi
+
+
+
+
+
+
+
