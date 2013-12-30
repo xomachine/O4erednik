@@ -10,7 +10,7 @@ from os.path import abspath, isfile, dirname, basename, getsize, realpath
 from os import sysconf, environ, urandom, kill, _exit
 from subprocess import Popen, call
 from csv import writer, reader
-from sys import platform, excepthook
+from sys import platform
 from uuid import uuid4
 from logging import basicConfig, debug, DEBUG, info, warning, error, exception
 # , INFO
@@ -36,6 +36,21 @@ else:
     logformat = "log"
     QString = lambda string: string
 
+
+#================================================================
+# LogableThread begins here
+#================================================================
+class LogableThread(Thread):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._real_run = self.run
+        self.run = self._wrap_run
+        
+    def _wrap_run(self):
+        try:
+            self._real_run()
+        except:
+            exception('Uncaught exception is occured!')
 
 #================================================================
 # Settings class begins here
@@ -389,7 +404,7 @@ class Queue():
             self.recvfile(shared.ifile, sock, b'ti')
             self.recvfile(shared.cfile, sock, b'tc')
             if sock.recv(2) == b'do':
-                ls = Thread(
+                ls = LogableThread(
                     target=self.sendlog,
                     name="logsender",
                     args=[shared, sock.getsockname()[0]]
@@ -519,15 +534,15 @@ class Queue():
 #================================================================
 # ShareHandler class begins here
 #================================================================
-class ShareHandler(Thread):
+class ShareHandler(LogableThread):
 
     alive = True
 
     def __init__(self):
-        Thread.__init__(self)
+        LogableThread.__init__(self)
         self.daemon = True
         self.name = "sharehandler"
-        self.listener = Thread(
+        self.listener = LogableThread(
             target=self.listen,
             name="bcastlistener"
             )
@@ -546,10 +561,10 @@ class ShareHandler(Thread):
             if queue.state.get() == 'f':  # Full of assignments
                 debug("Queue is full!")
                 self.listenfor = b'f'
-                self.action = lambda: Thread(
+                self.action = lambda: LogableThread(
                     target=queue.share,
                     args=[self.sender],
-                    name="share-" + gethostbyaddr(self.sender)
+                    name="share-" + gethostbyaddr(self.sender)[0]
                     ).start()
                 self.broadcast(b'h')
             elif queue.state.get() == 'w':  # Working last
@@ -591,10 +606,10 @@ class ShareHandler(Thread):
 #================================================================
 # Listener class begins here
 #================================================================
-class Listener(Thread):
+class Listener(LogableThread):
 
     def __init__(self, lhost):
-        Thread.__init__(self)
+        LogableThread.__init__(self)
         self.daemon = True
         self.name = "listener"
         self.localsock = socket()
@@ -653,10 +668,10 @@ class Listener(Thread):
 #================================================================
 # Processor class begins here
 #================================================================
-class Processor(Thread):
+class Processor(LogableThread):
 
     def __init__(self):
-        Thread.__init__(self)
+        LogableThread.__init__(self)
         self.daemon = True
         self.name = "processor"
         self.alive = True
@@ -731,8 +746,6 @@ basicConfig(
     format='[%(asctime)s] %(threadName)s: %(levelname)s, %(message)s',
     datefmt='%d.%m.%y %H:%M:%S'
     )
-
-excepthook = lambda x: exception("Uncaught exeption!", exc_info=x)
 
 # Declaring main queue of assignments
 queue = Queue()
@@ -1070,9 +1083,9 @@ else:
 #----------------------------------------------
 # GUI Handler
 #----------------------------------------------
-    class GUIHandler(Thread):
+    class GUIHandler(LogableThread):
         def __init__(self):
-            Thread.__init__(self)
+            LogableThread.__init__(self)
             self.daemon = True
             self.name = "GUIHandler"
 
