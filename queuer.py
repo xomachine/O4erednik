@@ -5,7 +5,7 @@ from socket import socket, gethostbyname, gethostname, gethostbyaddr, SHUT_RDWR
 from socket import SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_DGRAM, SO_BROADCAST
 from signal import SIGKILL
 from threading import Thread, Condition, Lock
-from time import sleep
+from time import sleep, strftime
 from os.path import abspath, isfile, dirname, basename, getsize, realpath
 from os import sysconf, environ, urandom, kill, _exit
 from subprocess import Popen, call
@@ -45,12 +45,13 @@ class LogableThread(Thread):
         super().__init__(**kwargs)
         self._real_run = self.run
         self.run = self._wrap_run
-        
+
     def _wrap_run(self):
         try:
             self._real_run()
         except:
             exception('Uncaught exception is occured!')
+
 
 #================================================================
 # Settings class begins here
@@ -863,7 +864,12 @@ else:
 
         def MenuLastAdd(self, ofile):
             icon = QtGui.QIcon(icons + "/free.ico")
-            menu = self.last.addMenu(icon, ofile)
+            menu = self.last.addMenu(
+                icon,
+                strftime("[%H:%M] ") + basename(ofile)
+                )
+            menu.addAction(QString(ofile)).setDisabled(True)
+            menu.addSeparator()
             act = menu.addAction(QString("Открыть в визуализаторе"))
             act.triggered.connect(
                 lambda: Popen([keys.array['visexe'], ofile])
@@ -871,6 +877,12 @@ else:
             act = menu.addAction(QString("Открыть как текст"))
             act.triggered.connect(
                 lambda: Popen([keys.array['textexe'], ofile])
+                )
+            act = menu.addAction(QString("Удалить из списка"))
+            act.triggered.connect(
+                lambda: self.last.removeAction(
+                    self.lastarray.pop(menu).menuAction()
+                    )
                 )
             self.lastarray.insert(0, menu)
             if len(self.lastarray) > 20:
