@@ -151,12 +151,15 @@ class State():
 class Assignment():
 
     def __init__(self, pid=0, ifile=None):
-        self.ifile = abspath(ifile)
+        if ifile:
+            self.ifile = abspath(ifile)
+            self.wd = dirname(self.ifile)
+        else:
+            self.ifile = "LINDA"
         self.pid = pid  # PID of caller
         self.ofile = self.ifile[:-3] + logformat
         self.cfile = self.ifile[:-3] + "chk"  # Chk filename will be overwriten
         self.cbfile = basename(self.cfile)
-        self.wd = dirname(self.ifile)
         self.process = None
 
     def do(self):
@@ -251,7 +254,7 @@ class Queue():
                     line = "%chk=" + self.current.cbfile + "\n"
                 chk = False  # CHECKME: handle with custom chknames
             elif line.startswith("%lindaworkers"):
-                line = ""
+                line = ""  # TODO: Handle with linda
             wlines.append(line)
         fs.close()
         if chk:
@@ -660,10 +663,19 @@ class Listener(LogableThread):
                 error("Incorrect PID: " + data[1:])
                 return
             queue.abort(pid)
-
         elif data[0] == 's':
             queue.recerve(conn)
             return
+        elif data[0] == 'l':
+            if len(data) > 1:
+                if data[1] == 'b':
+                    if queue.state.get() == 'e':
+                        queue._lock.acquire()
+                        queue.current = Assignment()
+                elif data[1] == 'e':
+                    if queue.current and queue.current.ifile == 'LINDA':
+                        queue.current = None
+                        queue._lock.release()
 
 
 #================================================================
