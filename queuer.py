@@ -806,15 +806,33 @@ else:
                 QtGui.QIcon(icons + "/run.ico"),
                 QString("На этом компьютере")
                 )
+            self.local.hovered.connect(
+                lambda x: QtGui.QTooltip.showText(
+                    QtGui.QCursor.pos(),
+                    x.toolTip()
+                    )
+                )
 
             self.remote = self.addMenu(
                 QtGui.QIcon(icons + "/remote.ico"),
                 QString("На других компьютерах")
                 )
+            self.remote.hovered.connect(
+                lambda x: QtGui.QTooltip.showText(
+                    QtGui.QCursor.pos(),
+                    x.toolTip()
+                    )
+                )
 
             self.last = self.addMenu(
                 QtGui.QIcon(icons + "/wait.ico"),
                 QString("Последние задачи")
+                )
+            self.last.hovered.connect(
+                lambda x: QtGui.QTooltip.showText(
+                    QtGui.QCursor.pos(),
+                    x.toolTip()
+                    )
                 )
             self.lastarray = []
 
@@ -843,10 +861,11 @@ else:
             act = menu.addAction(iconcan, QString("Отмена"))
             act.triggered.connect(lambda: queue.abort(queue.current.pid))
             icon = QtGui.QIcon(icons + "/wait.ico")
-            for element in queue._queue:
+            for element in reversed(queue._queue):  # CHECKME order in queue
                 pid = element.pid
                 name = basename(element.ifile)
                 menu = self.local.addMenu(icon, name)
+                menu.setToolTip(element.ifile)
                 abort = lambda: queue.abort(element.pid)
                 act = menu.addAction(iconcan, QString("Удалить"))
                 act.triggered.connect(abort)
@@ -858,27 +877,29 @@ else:
             for element in queue._shared.keys():
                 name = queue._shared[element] + ":" + basename(element.ifile)
                 menu = self.remote.addMenu(icon, name)
+                menu.setToolTip(element.ifile)
                 abort = lambda: queue.abort(element.pid)
                 act = menu.addAction(iconcan, QString("Отмена"))
                 act.triggered.connect(abort)
 
         def MenuLastAdd(self, ofile):
             icon = QtGui.QIcon(icons + "/free.ico")
+            iconop = QtGui.QIcon(icons + "/run.ico")
+            iconcan = QtGui.QIcon(icons + "/delete.ico")
             menu = self.last.addMenu(
                 icon,
                 strftime("[%H:%M] ") + basename(ofile)
                 )
-            menu.addAction(QString(ofile)).setDisabled(True)
-            menu.addSeparator()
-            act = menu.addAction(QString("Открыть в визуализаторе"))
+            menu.setToolTip(ofile)
+            act = menu.addAction(iconop, QString("Открыть в визуализаторе"))
             act.triggered.connect(
                 lambda: Popen([keys.array['visexe'], ofile])
                 )
-            act = menu.addAction(QString("Открыть как текст"))
+            act = menu.addAction(iconop, QString("Открыть как текст"))
             act.triggered.connect(
                 lambda: Popen([keys.array['textexe'], ofile])
                 )
-            act = menu.addAction(QString("Удалить из списка"))
+            act = menu.addAction(iconcan, QString("Удалить из списка"))
             act.triggered.connect(
                 lambda: self.last.removeAction(
                     self.lastarray.pop(menu).menuAction()
