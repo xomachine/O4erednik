@@ -1,7 +1,7 @@
 O4erednik
 =========
 
-Queue functional for Gaussian 03
+Queue for Gaussian 03
 
 
 The application provides possibility to submit your Gaussian 03 jobs into a queue and calculate them one by one.
