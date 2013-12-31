@@ -814,38 +814,27 @@ else:
 
             self.addSeparator()
 
+            hoveract = lambda x: QtGui.QTooltip.showText(
+                QtGui.QCursor.pos(),
+                x.toolTip()
+                )
             self.local = self.addMenu(
                 QtGui.QIcon(icons + "/run.ico"),
                 QString("На этом компьютере")
                 )
-            self.local.hovered.connect(
-                lambda x: QtGui.QTooltip.showText(
-                    QtGui.QCursor.pos(),
-                    x.toolTip()
-                    )
-                )
+            self.local.hovered.connect(hoveract)
 
             self.remote = self.addMenu(
                 QtGui.QIcon(icons + "/remote.ico"),
                 QString("На других компьютерах")
                 )
-            self.remote.hovered.connect(
-                lambda x: QtGui.QTooltip.showText(
-                    QtGui.QCursor.pos(),
-                    x.toolTip()
-                    )
-                )
+            self.remote.hovered.connect(hoveract)
 
             self.last = self.addMenu(
                 QtGui.QIcon(icons + "/wait.ico"),
                 QString("Последние задачи")
                 )
-            self.last.hovered.connect(
-                lambda x: QtGui.QTooltip.showText(
-                    QtGui.QCursor.pos(),
-                    x.toolTip()
-                    )
-                )
+            self.last.hovered.connect(hoveract)
             self.lastarray = []
 
             self.dialog = QtGui.QFileDialog()
@@ -869,7 +858,7 @@ else:
                 icon = QtGui.QIcon(icons + "/run.ico")
 
             menu = self.local.addMenu(icon, name)
-
+            menu.setToolTip(queue.current.ifile)
             act = menu.addAction(iconcan, QString("Отмена"))
             act.triggered.connect(lambda: queue.abort(queue.current.pid))
             icon = QtGui.QIcon(icons + "/wait.ico")
