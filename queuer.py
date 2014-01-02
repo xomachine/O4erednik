@@ -814,10 +814,11 @@ else:
 
             self.addSeparator()
 
-            hoveract = lambda x: QtGui.QTooltip.showText(
-                QtGui.QCursor.pos(),
-                x.toolTip()
-                )
+            hoveract = lambda x:\
+                QtGui.QToolTip.showText(
+                    QtGui.QCursor.pos(),
+                    x.toolTip()
+                    )
             self.local = self.addMenu(
                 QtGui.QIcon(icons + "/run.ico"),
                 QString("На этом компьютере")
@@ -835,7 +836,6 @@ else:
                 QString("Последние задачи")
                 )
             self.last.hovered.connect(hoveract)
-            self.lastarray = []
 
             self.dialog = QtGui.QFileDialog()
             # Prevents exit from GUI after closing dialog
@@ -903,12 +903,11 @@ else:
             act = menu.addAction(iconcan, QString("Удалить из списка"))
             act.triggered.connect(
                 lambda: self.last.removeAction(
-                    self.lastarray.pop(menu).menuAction()
+                    menu.menuAction()
                     )
                 )
-            self.lastarray.insert(0, menu)
-            if len(self.lastarray) > 20:
-                self.last.removeAction(self.lastarray.pop().menuAction())
+            if len(self.last.actions()) > 20:
+                self.last.removeAction(self.last.actions.pop())
 
         def selectJob(self):
             self.dialog.setWindowTitle(QString("Выберите задачу"))
