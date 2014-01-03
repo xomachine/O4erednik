@@ -767,7 +767,7 @@ queue = Queue()
 keys = Settings()
 keys.default()
 keys.load()
-
+keys.save()
 # Preparing gaussian environment
 environ['g03root'] = dirname(dirname(keys.array['gexe']))
 environ['GAUSS_EXEDIR'] = dirname(keys.array['gexe'])
