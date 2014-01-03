@@ -254,7 +254,7 @@ class Queue():
                     line = "%chk=" + self.current.cbfile + "\n"
                 chk = False  # CHECKME: handle with custom chknames
             elif line.startswith("%lindaworkers"):
-                line = ""  # TODO: Handle with linda
+                line = self.lindalock(line[14:])  # TODO: Handle with linda
             wlines.append(line)
         fs.close()
         if chk:
@@ -388,6 +388,10 @@ class Queue():
         sock.close()
         job.complete()
         self.state.set(self.state.get())
+
+# Find and lock computers for linda
+    def lindalock(self, lindastring):
+        return ""
 
 # Reserve and add to queue job from another queuer
     def recerve(self, sock):
