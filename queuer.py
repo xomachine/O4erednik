@@ -66,7 +66,7 @@ class Settings():
         settings = self.array
         settings['rserver'] = False
         settings['rclient'] = False
-        settings['rhost'] = "85.143.3.83"
+        settings['rhost'] = "10.42.1.1"
         settings['bcastaddr'] = "10.42.0.255"
         if platform == 'win32':
             settings['gexe'] = "C:\\G03W\\g03.exe"
