@@ -74,6 +74,7 @@ class Settings():
             settings['lbcastaddr'] = "<broadcast>"
             settings['visexe'] = "gview.exe"
             settings['textexe'] = "notepad.exe"
+            settings['samebcast'] = False
         else:
             # "/home/gaus"
             settings['gexe'] = "/home/zelentsov/gaussian/g03/g03"
@@ -421,6 +422,7 @@ class Queue():
                 queue.add(shared)
 
 # Stream log of remotely added job
+# TODO: IsAlive requests
     def sendlog(self, job, host):
         sleep(1)
         info("Preparing for streaming " + basename(job.ofile))
