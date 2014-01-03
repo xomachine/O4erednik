@@ -250,18 +250,4 @@ def getinbox(unread=False):                                                 # Ge
         msglist[id] = Message(id,href,new)
     return msglist
 
-#========================================
-# Testing, testing, testing....
-#========================================
-# https://mail.yandex.ru/neo2/#message/2300000003086117952
-                                                                
-#auth("laboratory.306b","qwantarik")
 
-#msg_list = getinbox()
-
-#msg_list["2300000003092448947"].get()
-#print("Sender: "+msg_list["2300000003092448947"].sender)
-#print("Subject: "+msg_list["2300000003092448947"].subject)
-#print("Text: "+msg_list["2300000003092448947"].text)
-#msg_list["2300000003092448947"].save_attach('/home/xomachine',name="script.sh")
-#msg_list["2300000003092448947"].delete()
