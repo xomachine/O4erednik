@@ -13,7 +13,7 @@ from csv import writer, reader
 from sys import platform
 from uuid import uuid4
 from logging import basicConfig, debug, DEBUG, info, warning, error, exception
-# , INFO
+
 
 #================================================================
 # Platform dependent variables
@@ -238,7 +238,10 @@ class Queue():
 
 # Changes parametrs in input file to optimize job for that machine
     def prepare(self, n=nprocs):
-        fs = open(self.current.ifile, 'r')
+        try:
+            fs = open(self.current.ifile, 'r')
+        except:
+            return True
         lines = fs.readlines()
         proc = True
         chk = True
@@ -266,12 +269,13 @@ class Queue():
         for line in wlines:
             fs.write(line)
         fs.close()
-        return
+        return False
 
 # Do one job from queue
     def do(self):
         self.current = self.pop()
-        self.prepare()
+        if self.prepare():
+            return True
         self.current.do()
         self._lock.acquire()
         if self.current.pid in self._by_pid:
@@ -801,9 +805,24 @@ info("=====================================")
 try:
     from PyQt4 import QtGui
     from PyQt4.QtCore import SIGNAL, Qt
+    import icons
 except:
     warning("PyQt4 library not found! Running without GUI")
 else:
+#----------------------------------------------
+# Icon loader
+#----------------------------------------------
+    def loadicon(icon):
+        pixmap = QtGui.QPixmap()
+        pixmap.loadFromData(icon)
+        return QtGui.QIcon(pixmap)
+    icon_ = dict()
+    icon_['add'] = loadicon(icons.add_icon)
+    icon_['delete'] = loadicon(icons.delete_icon)
+    icon_['free'] = loadicon(icons.free_icon)
+    icon_['remote'] = loadicon(icons.remote_icon)
+    icon_['run'] = loadicon(icons.run_icon)
+    icon_['wait'] = loadicon(icons.wait_icon)
 
 #----------------------------------------------
 # Left click menu
@@ -813,8 +832,7 @@ else:
             QtGui.QMenu.__init__(self, parent)
             self.connect(self, SIGNAL('MenusUpdate()'), self.MenusUpdate)
             self.connect(self, SIGNAL('MenuLastAdd(QString)'), self.MenuLastAdd)
-            icon = QtGui.QIcon(icons + "/add.ico")
-            act = QtGui.QAction(icon, QString("Добавить задачу"), self)
+            act = QtGui.QAction(icon_['add'], QString("Добавить задачу"), self)
             act.triggered.connect(self.selectJob)
             self.addAction(act)
 
@@ -826,19 +844,19 @@ else:
                     x.toolTip()
                     )
             self.local = self.addMenu(
-                QtGui.QIcon(icons + "/run.ico"),
+                icon_['run'],
                 QString("На этом компьютере")
                 )
             self.local.hovered.connect(hoveract)
 
             self.remote = self.addMenu(
-                QtGui.QIcon(icons + "/remote.ico"),
+                icon_['remote'],
                 QString("На других компьютерах")
                 )
             self.remote.hovered.connect(hoveract)
 
             self.last = self.addMenu(
-                QtGui.QIcon(icons + "/wait.ico"),
+                icon_['wait'],
                 QString("Последние задачи")
                 )
             self.last.hovered.connect(hoveract)
@@ -857,56 +875,50 @@ else:
                 return
             pid = queue.current.pid
             name = basename(queue.current.ifile)
-            iconcan = QtGui.QIcon(icons + "/delete.ico")
             if pid == 0:
-                icon = QtGui.QIcon(icons + "/remote.ico")
+                menu = self.local.addMenu(icon_['remote'], name)
             else:
-                icon = QtGui.QIcon(icons + "/run.ico")
-
-            menu = self.local.addMenu(icon, name)
+                menu = self.local.addMenu(icon_['run'], name)
             menu.setToolTip(queue.current.ifile)
-            act = menu.addAction(iconcan, QString("Отмена"))
+            act = menu.addAction(icon_['delete'], QString("Отмена"))
             act.triggered.connect(lambda: queue.abort(queue.current.pid))
-            icon = QtGui.QIcon(icons + "/wait.ico")
             for element in reversed(queue._queue):  # CHECKME order in queue
                 pid = element.pid
                 name = basename(element.ifile)
-                menu = self.local.addMenu(icon, name)
+                menu = self.local.addMenu(icon_['wait'], name)
                 menu.setToolTip(element.ifile)
                 abort = lambda: queue.abort(element.pid)
-                act = menu.addAction(iconcan, QString("Удалить"))
+                act = menu.addAction(icon_['delete'], QString("Удалить"))
                 act.triggered.connect(abort)
 
         def MenuRemoteUpdate(self):
             self.remote.clear()
-            icon = QtGui.QIcon(icons + "/remote.ico")
-            iconcan = QtGui.QIcon(icons + "/delete.ico")
             for element in queue._shared.keys():
                 name = queue._shared[element] + ":" + basename(element.ifile)
-                menu = self.remote.addMenu(icon, name)
+                menu = self.remote.addMenu(icon_['remote'], name)
                 menu.setToolTip(element.ifile)
                 abort = lambda: queue.abort(element.pid)
-                act = menu.addAction(iconcan, QString("Отмена"))
+                act = menu.addAction(icon_['delete'], QString("Отмена"))
                 act.triggered.connect(abort)
 
         def MenuLastAdd(self, ofile):
-            icon = QtGui.QIcon(icons + "/free.ico")
-            iconop = QtGui.QIcon(icons + "/run.ico")
-            iconcan = QtGui.QIcon(icons + "/delete.ico")
             menu = self.last.addMenu(
-                icon,
+                icon_['free'],
                 strftime("[%H:%M] ") + basename(ofile)
                 )
             menu.setToolTip(ofile)
-            act = menu.addAction(iconop, QString("Открыть в визуализаторе"))
+            act = menu.addAction(
+                icon_['run'],
+                QString("Открыть в визуализаторе")
+                )
             act.triggered.connect(
                 lambda: Popen([keys.array['visexe'], ofile])
                 )
-            act = menu.addAction(iconop, QString("Открыть как текст"))
+            act = menu.addAction(icon_['run'], QString("Открыть как текст"))
             act.triggered.connect(
                 lambda: Popen([keys.array['textexe'], ofile])
                 )
-            act = menu.addAction(iconcan, QString("Удалить из списка"))
+            act = menu.addAction(icon_['delete'], QString("Удалить из списка"))
             act.triggered.connect(
                 lambda: self.last.removeAction(
                     menu.menuAction()
@@ -1076,8 +1088,7 @@ else:
             act.triggered.connect(self.setwin.show)
             self.addAction(act)
 
-            icon = QtGui.QIcon(icons + "/delete.ico")
-            act = QtGui.QAction(icon, QString("Выход"), self)
+            act = QtGui.QAction(icon_['delete'], QString("Выход"), self)
             act.triggered.connect(self.doExit)
             self.addAction(act)
 
@@ -1090,7 +1101,7 @@ else:
     class TrayIcon(QtGui.QSystemTrayIcon):
         def __init__(self, parent=None):
             QtGui.QSystemTrayIcon.__init__(self, parent)
-            self.setIcon(QtGui.QIcon(icons + "/wait.ico"))
+            self.setIcon(icon_['wait'])
             self.setToolTip(QString('Инициализация'))
             self.connect(
                 self,
@@ -1117,7 +1128,7 @@ else:
                     QtGui.QCursor.pos()))
 
         def setStateIcon(self, icon):
-            self.setIcon(QtGui.QIcon(icons + icon))
+            self.setIcon(icon_[icon])
 
 #----------------------------------------------
 # GUI Handler
@@ -1145,7 +1156,7 @@ else:
                 str(queue._by_pid)
                 )
             if queue.state.get() == 'e':
-                tray.emit(SIGNAL('setStateIcon(QString)'), "/free.ico")
+                tray.emit(SIGNAL('setStateIcon(QString)'), "free")
                 tray.emit(SIGNAL('setToolTip(QString)'), QString("Свободен!"))
             else:
                 if queue.current:
@@ -1154,13 +1165,13 @@ else:
                 else:
                     return
                 if curpid == 0:
-                    tray.emit(SIGNAL('setStateIcon(QString)'), "/remote.ico")
+                    tray.emit(SIGNAL('setStateIcon(QString)'), "remote")
                     tray.emit(
                         SIGNAL('setToolTip(QString)'),
                         QString("Идет расчет задачи с другого компьютера")
                         )
                 else:
-                    tray.emit(SIGNAL('setStateIcon(QString)'), "/run.ico")
+                    tray.emit(SIGNAL('setStateIcon(QString)'), "run")
                     tray.emit(
                         SIGNAL('setToolTip(QString)'),
                         QString(
