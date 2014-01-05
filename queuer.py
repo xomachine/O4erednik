@@ -807,23 +807,8 @@ try:
     from PyQt4.QtCore import SIGNAL, Qt
     import icons
 except:
-    warning("PyQt4 library not found! Running without GUI")
+    exception("PyQt4 library not found! Running without GUI")
 else:
-#----------------------------------------------
-# Icon loader
-#----------------------------------------------
-    def loadicon(icon):
-        pixmap = QtGui.QPixmap()
-        pixmap.loadFromData(icon)
-        return QtGui.QIcon(pixmap)
-    icon_ = dict()
-    icon_['add'] = loadicon(icons.add_icon)
-    icon_['delete'] = loadicon(icons.delete_icon)
-    icon_['free'] = loadicon(icons.free_icon)
-    icon_['remote'] = loadicon(icons.remote_icon)
-    icon_['run'] = loadicon(icons.run_icon)
-    icon_['wait'] = loadicon(icons.wait_icon)
-
 #----------------------------------------------
 # Left click menu
 #----------------------------------------------
@@ -1212,6 +1197,23 @@ else:
 
     gui = GUIHandler()
     app = QtGui.QApplication([])
+#----------------------------------------------
+# Icon loader
+#----------------------------------------------
+
+    def loadicon(icon):
+        pixmap = QtGui.QPixmap()
+        pixmap.loadFromData(icon)
+        return QtGui.QIcon(pixmap)
+
+    icon_ = dict()
+    icon_['add'] = loadicon(icons.add_icon)
+    icon_['delete'] = loadicon(icons.delete_icon)
+    icon_['free'] = loadicon(icons.free_icon)
+    icon_['remote'] = loadicon(icons.remote_icon)
+    icon_['run'] = loadicon(icons.run_icon)
+    icon_['wait'] = loadicon(icons.wait_icon)
+
     tray = TrayIcon()
     tray.show()
     gui.start()
