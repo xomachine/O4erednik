@@ -64,9 +64,6 @@ class Settings():
 
     def default(self):
         settings = self.array
-        settings['rserver'] = False
-        settings['rclient'] = False
-        settings['rhost'] = "10.42.1.1"
         settings['bcastaddr'] = "10.42.0.255"
         if platform == 'win32':
             settings['gexe'] = "C:\\G03W\\g03.exe"
@@ -421,13 +418,10 @@ class Queue():
 
 # Reserve and add to queue job from another queuer
     def recerve(self, sock):
-        if not keys.array['rserver']:
-            if self.state.get() != "e":
-                sock.send(b'ER')
-                return
-            fakepid = 0
-        else:
-            fakepid = -ord(urandom(1))
+        if self.state.get() != "e":
+            sock.send(b'ER')
+            return
+        fakepid = 0
         tmpinput = keys.array['gtmp'] + slash + gethostbyaddr(
             sock.getpeername()[0]
             )[0] + '_' + str(uuid4()).replace("-", "")[:2] + ".com"
@@ -447,14 +441,13 @@ class Queue():
                 queue.add(shared)
 
 # Stream log of remotely added job
-# TODO: IsAlive requests
     def sendlog(self, job, host):
         sleep(1)
         info("Preparing for streaming " + basename(job.ofile))
         lsock = socket()
         lsock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         lsock.bind(
-            (host, 9109)  # CHECKME Or rhost
+            (host, 9109)
             )
         lsock.listen(1)
         debug("Created socket for streaming " + basename(job.ofile))
@@ -720,8 +713,6 @@ class Processor(LogableThread):
     def run(self):
         while self.alive:
             queue.do()
-            if keys.array['rclient']:
-                sleep(10)
 
 
 #================================================================
@@ -732,7 +723,6 @@ class ThreadsHandler():
     def __init__(self):
         super(ThreadsHandler, self).__init__()
         self.listener = None
-        self.rlistener = None
         self.sharehandler = None
         # Queue processor, that takes jobs from queue and doing it
         processor = Processor()
@@ -741,31 +731,20 @@ class ThreadsHandler():
 
     def init(self):
         self.listener = Listener(keys.array['host'])
-        if keys.array['rserver']:
-            self.rlistener = Listener(keys.array['rhost'])
-        if keys.array['rclient']:
-            queue.do = lambda: queue.share(keys.array['rhost'])
-        else:
-            self.sharehandler = ShareHandler()
+        self.sharehandler = ShareHandler()
 
     def start(self):
         self.listener.start()
-        if self.rlistener:
-            self.rlistener.start()
         # Interactor with other queuers, propouses help than queue is empty
         # and requests help in other case
-        if self.sharehandler:
-            self.sharehandler.start()
+        self.sharehandler.start()
 
     def stop(self):
         if self.listener and self.listener.isAlive():
             self.listener.stop()
-        if self.rlistener and self.rlistener.isAlive():
-            self.rlistener.stop()
         if self.sharehandler and self.sharehandler.isAlive():
             self.sharehandler.stop()
         self.listener = None
-        self.rlistener = None
         self.sharehandler = None
 
     def restart(self):
@@ -990,18 +969,6 @@ else:
                             True if x == 2 else False
                             )
                     )
-                self.ui.clientmode.toggled.connect(
-                        lambda: self.ui.rhost.setEnabled(
-                            self.ui.clientmode.isChecked(
-                                ) or self.ui.servermode.isChecked()
-                            )
-                    )
-                self.ui.servermode.toggled.connect(
-                        lambda: self.ui.rhost.setEnabled(
-                            self.ui.clientmode.isChecked(
-                                ) or self.ui.servermode.isChecked()
-                            )
-                    )
 
                 self.dialog = QtGui.QFileDialog()
                 self.dialog.setAttribute(Qt.WA_QuitOnClose, False)
@@ -1022,7 +989,6 @@ else:
 
         def Save(self):
             keys.array['host'] = self.ui.host.displayText()
-            keys.array['rhost'] = self.ui.rhost.displayText()
             keys.array['bcastaddr'] = self.ui.bcast.displayText()
             keys.array['lbcastaddr'] = self.ui.lbcast.displayText()
             keys.array['gtmp'] = self.ui.gtmp.displayText()
@@ -1031,8 +997,6 @@ else:
             keys.array['textexe'] = self.ui.textcom.displayText()
             keys.array['autohost'] = self.ui.autohost.isChecked()
             keys.array['samebcast'] = self.ui.lbcastsame.isChecked()
-            keys.array['rclient'] = self.ui.clientmode.isChecked()
-            keys.array['rserver'] = self.ui.servermode.isChecked()
             keys.save()
             keys.load()
             self.Load()
@@ -1043,23 +1007,12 @@ else:
             self.ui.autohost.setCheckState(
                 2 if keys.array['autohost'] else 0
                 )
-            self.ui.servermode.setCheckState(
-                2 if keys.array['rserver'] else 0
-                )
-            self.ui.clientmode.setCheckState(
-                2 if keys.array['rclient'] else 0
-                )
             self.ui.lbcastsame.setCheckState(
                 2 if keys.array['samebcast'] else 0
                 )
             self.ui.host.clear()
             self.ui.host.insert(keys.array['host'])
             self.ui.host.setDisabled(keys.array['autohost'])
-            self.ui.rhost.clear()
-            self.ui.rhost.insert(keys.array['rhost'])
-            self.ui.rhost.setEnabled(
-                keys.array['rclient'] or keys.array['rserver']
-                )
             self.ui.bcast.clear()
             self.ui.bcast.insert(keys.array['bcastaddr'])
             self.ui.lbcast.clear()
