@@ -255,7 +255,7 @@ class Queue():
                     line = "%chk=" + self.current.cbfile + "\n"
                 chk = False  # CHECKME: handle with custom chknames
             elif line.startswith("%lindaworkers"):
-                line = self.lindalock(line[14:])  # TODO: Handle with linda
+                line = self.lindalock(line[14:]) + "\n"
             wlines.append(line)
         fs.close()
         if chk:
@@ -422,7 +422,7 @@ class Queue():
         comps = lindastring.split(',')
         for comp in comps:
             needed += int(comp.split(':')[1])
-        ShareHandler.broadcast(b'l')  # Call for free computers
+        ShareHandler.broadcast(None, b'l')  # Call for free computers
         sleep(10)  # Wait for list formation
         for addr, n in self._lindafree:  # Adding found to string
             newlstring += addr + ':' + str(n) + ","
@@ -430,7 +430,10 @@ class Queue():
             if n >= needed:
                 break
         self._lindafree = None
-        return newlstring[:-1]
+        if len(newlstring) > 0:
+            return "%lindaworkers=" + newlstring[:-1]
+        else:
+            return ""
 
 # Reserve and add to queue job from another queuer
     def recerve(self, sock):
