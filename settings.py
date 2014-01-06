@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './settings.ui'
 #
-# Created: Fri Dec 27 17:25:54 2013
+# Created: Mon Jan  6 22:19:32 2014
 #      by: PyQt4 UI code generator 4.10.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -47,19 +47,12 @@ class Ui_SettingsDialog(object):
         self.label = QtGui.QLabel(self.groupBox)
         self.label.setGeometry(QtCore.QRect(10, 20, 91, 21))
         self.label.setObjectName(_fromUtf8("label"))
-        self.label_2 = QtGui.QLabel(self.groupBox)
-        self.label_2.setGeometry(QtCore.QRect(300, 20, 211, 21))
-        self.label_2.setObjectName(_fromUtf8("label_2"))
         self.host = QtGui.QLineEdit(self.groupBox)
         self.host.setEnabled(True)
         self.host.setGeometry(QtCore.QRect(10, 40, 231, 21))
         self.host.setInputMask(_fromUtf8(""))
         self.host.setText(_fromUtf8(""))
         self.host.setObjectName(_fromUtf8("host"))
-        self.rhost = QtGui.QLineEdit(self.groupBox)
-        self.rhost.setGeometry(QtCore.QRect(300, 40, 221, 21))
-        self.rhost.setInputMask(_fromUtf8(""))
-        self.rhost.setObjectName(_fromUtf8("rhost"))
         self.autohost = QtGui.QCheckBox(self.groupBox)
         self.autohost.setGeometry(QtCore.QRect(10, 60, 131, 21))
         self.autohost.setTristate(False)
@@ -139,18 +132,6 @@ class Ui_SettingsDialog(object):
         self.textcomch.setGeometry(QtCore.QRect(510, 20, 30, 22))
         self.textcomch.setObjectName(_fromUtf8("textcomch"))
         self.tabWidget.addTab(self.Environment, _fromUtf8(""))
-        self.Behaviour = QtGui.QWidget()
-        self.Behaviour.setObjectName(_fromUtf8("Behaviour"))
-        self.groupBox_6 = QtGui.QGroupBox(self.Behaviour)
-        self.groupBox_6.setGeometry(QtCore.QRect(10, 10, 541, 80))
-        self.groupBox_6.setObjectName(_fromUtf8("groupBox_6"))
-        self.servermode = QtGui.QCheckBox(self.groupBox_6)
-        self.servermode.setGeometry(QtCore.QRect(10, 30, 131, 21))
-        self.servermode.setObjectName(_fromUtf8("servermode"))
-        self.clientmode = QtGui.QCheckBox(self.groupBox_6)
-        self.clientmode.setGeometry(QtCore.QRect(280, 30, 141, 21))
-        self.clientmode.setObjectName(_fromUtf8("clientmode"))
-        self.tabWidget.addTab(self.Behaviour, _fromUtf8(""))
         self.Save = QtGui.QPushButton(SettingsDialog)
         self.Save.setGeometry(QtCore.QRect(240, 300, 91, 22))
         self.Save.setObjectName(_fromUtf8("Save"))
@@ -170,7 +151,6 @@ class Ui_SettingsDialog(object):
         SettingsDialog.setWindowTitle(_translate("SettingsDialog", "Настройки", None))
         self.groupBox.setTitle(_translate("SettingsDialog", "Адрес компьютера", None))
         self.label.setText(_translate("SettingsDialog", "Локальный:", None))
-        self.label_2.setText(_translate("SettingsDialog", "Удаленный:", None))
         self.autohost.setText(_translate("SettingsDialog", "Автоматически", None))
         self.groupBox_2.setTitle(_translate("SettingsDialog", "Широковещательный адрес", None))
         self.label_3.setText(_translate("SettingsDialog", "Прием:", None))
@@ -189,10 +169,6 @@ class Ui_SettingsDialog(object):
         self.label_7.setText(_translate("SettingsDialog", "Команда:", None))
         self.textcomch.setText(_translate("SettingsDialog", "...", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Environment), _translate("SettingsDialog", "Окружение", None))
-        self.groupBox_6.setTitle(_translate("SettingsDialog", "Удаленная отправка задач (требуется перезапуск):", None))
-        self.servermode.setText(_translate("SettingsDialog", "Режим сервера", None))
-        self.clientmode.setText(_translate("SettingsDialog", "Режим клиента", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.Behaviour), _translate("SettingsDialog", "Поведение", None))
         self.Save.setText(_translate("SettingsDialog", "Сохранить", None))
         self.Cancel.setText(_translate("SettingsDialog", "Отмена", None))
         self.Default.setText(_translate("SettingsDialog", "По умолчанию", None))
