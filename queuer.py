@@ -414,7 +414,23 @@ class Queue():
 
 # Find and lock computers for linda
     def lindalock(self, lindastring):
-        return ""
+        self._lindafree = []
+        found = 0
+        needed = 0
+        newlstring = " "
+        # Parse lindastring here (only num of requested processors)
+        comps = lindastring.split(',')
+        for comp in comps:
+            needed += int(comp.split(':')[1])
+        ShareHandler.broadcast(b'l')  # Call for free computers
+        sleep(10)  # Wait for list formation
+        for addr, n in self._lindafree:  # Adding found to string
+            newlstring += addr + ':' + str(n) + ","
+            found += n
+            if n >= needed:
+                break
+        self._lindafree = None
+        return newlstring[:-1]
 
 # Reserve and add to queue job from another queuer
     def recerve(self, sock):
@@ -618,6 +634,13 @@ class ShareHandler(LogableThread):
             if msg[0] == self.listenfor:
                 self.sender = msg[1][0]
                 self.action()
+            elif msg[0] == b'l':  # l means linda
+                if queue.state.get() == 'e':
+                    informer = socket()
+                    informer.connect((msg[1][0], 9043))
+                    inf = 'i' + str(nprocs)
+                    informer.send(inf.encode('utf-8'))
+                    informer.close()
 
     def broadcast(self, msg):
         sendsock = socket(AF_INET, SOCK_DGRAM)
@@ -686,7 +709,14 @@ class Listener(LogableThread):
             queue.abort(pid)
         elif data[0] == 's':
             queue.recerve(conn)
-            return
+        elif data[0] == 'i':
+            try:
+                numprocs = int(data[1:])
+            except:
+                exception("Cann't parse num of procs from " + str(addr))
+                return
+            if queue._lindafree:
+                queue._lindafree.append((addr, numprocs))
         elif data[0] == 'l':
             if len(data) > 1:
                 if data[1] == 'b':
@@ -697,6 +727,8 @@ class Listener(LogableThread):
                     if queue.current and queue.current.ifile == 'LINDA':
                         queue.current = None
                         queue._lock.release()
+
+        return
 
 
 #================================================================
