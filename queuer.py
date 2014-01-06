@@ -354,7 +354,7 @@ class Queue():
             self._shared.pop(job, gethostbyaddr(target)[0])
             self.add(job, job.pid)
             return 1
-
+        sock.settimeout(10.0)
         if sock.recv(2) != b'ts':  # Recerving stream
             sock.send(b'ER')
             error(
@@ -372,19 +372,40 @@ class Queue():
             " step by step from " + target
             )
         while True:
-            if sock.recv(1) != b'R':
-                info(basename(job.ifile) + " completetd at " + target)
+            try:
+                if job in self._shared:
+                    sock.send(b'RQ')  # ReQuest for log portion
+                    ans = sock.recv(2)
+                else:  # If not in shared, that means job aborted
+                    sock.send(b'AT')  # AborT job
+                    return 1
+            except:
+                exception("Cann't connect to remote computer")
+                info("Turning " + basename(job.ifile) + " back to queue")
+                self._shared.pop(job, gethostbyaddr(target)[0])
+                self.add(job, job.pid)
+                return 1
+            if ans == b'DT':  # New DaTa is avalible
+                try:
+                    sock.send(b'GT')  # GeT new data
+                    buf = sock.recv(1024)
+                except:
+                    exception("Cann't connect to remote computer")
+                    info("Turning " + basename(job.ifile) + " back to queue")
+                    self._shared.pop(job, gethostbyaddr(target)[0])
+                    self.add(job, job.pid)
+                    return 1
+                fs.write(buf)
+            elif ans == b'NT':  # NoThing to send
+                sleep(10)
+            elif ans == b'EX':  # The process EXited
                 break
-            if (job in self._shared):
-                sock.send(b'O')
-            else:
-                info(basename(job.ifile) + " at " + target + "is aborted here")
-                sock.send('A')
-                sock.close()
-                return
-            buf = sock.recv(1024)
-            sock.send(b'O')
-            fs.write(buf)
+            elif ans == b'AT':  # The job has AborTed
+                info(basename(job.ifile) + " aborted on remote computer")
+                info("Turning " + basename(job.ifile) + " back to queue")
+                self._shared.pop(job, gethostbyaddr(target)[0])
+                self.add(job, job.pid)
+                return 1
         fs.close()
         self.recvfile(job.ofile, sock, b'tl')
         self.recvfile(job.cfile, sock, b'tc')
@@ -438,50 +459,47 @@ class Queue():
         lsock.listen(1)
         debug("Created socket for streaming " + basename(job.ofile))
         sock, addr = lsock.accept()
+        # possible lsock can be closed after accepting CHECKME
+        sock.settimeout(10.0)
         debug("Accepted from " + addr[0])
-
         sock.send(b'ts')
         if sock.recv(2) != b'OK':
             error("Unexpected response from " + addr[0])
             return 1
         fs = None
         while job.process.poll() is None:
-            try:
+            if isfile(job.ofile):
                 fs = open(job.ofile, 'rb')
-            except:
-                sleep(10)
-                continue
-            else:
                 break
+            else:
+                sleep(10)
         while job.process.poll() is None:
+            req = sock.recv(2)
+            if req == b'AT':  # if AborTed
+                self.abort(job)
+                fs.close()
+                sock.close()
+                lsock.close()
+                return 1
             where = fs.tell()
-            buf = fs.readline()
+            buf = fs.read(1024)
             if not buf:
+                sock.send(b'NT')
                 fs.seek(where)
                 sleep(1)
             else:
-                try:
-                    sock.send(b'R')
-                    if sock.recv(1) == b'O':
-                        sock.send(buf)
-                        sock.recv(1)
-                    else:
-                        info(basename(job.ifile) + " is aborted remotely")
-                        self.abort(0)
-                        lsock.close()
-                        fs.close()
-                        return
-                except:
-                    info("Disconected while " + basename(job.ifile))
-                    self.abort(0)
-                    lsock.close()
+                sock.send(b'DT')
+                if sock.recv(2) != b'GT':
+                    self.abort(job)
                     fs.close()
-                    return
-        sock.send(b'C')
-        info(basename(job.ifile) + " is completed")
+                    sock.close()
+                    lsock.close()
+                    return 1
+                sock.send(buf)
+        if sock.recv(2) == b'RQ':
+            sock.send(b'EX')
         if fs:
             fs.close()
-
         if isfile(job.ofile):
             self.sendfile(job.ofile, sock, b'tl')
         else:
