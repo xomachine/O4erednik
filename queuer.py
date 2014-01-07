@@ -916,10 +916,6 @@ else:
                 )
             self.last.hovered.connect(hoveract)
 
-            self.dialog = QtGui.QFileDialog()
-            # Prevents exit from GUI after closing dialog
-            self.dialog.setAttribute(Qt.WA_QuitOnClose, False)
-
         def MenusUpdate(self):
             self.MenuLocalUpdate()
             self.MenuRemoteUpdate()
@@ -983,18 +979,21 @@ else:
                 self.last.removeAction(self.last.actions.pop())
 
         def selectJob(self):
-            self.dialog.setWindowTitle(QString("Выберите задачу"))
-            self.dialog.setLabelText(1, QString("Имя файла"))
-            self.dialog.setLabelText(2, QString("Тип файла"))
-            self.dialog.setLabelText(3, QString("Добавить"))
-            self.dialog.setLabelText(4, QString("Отмена"))
-            self.dialog.setDirectory(dirname(keys.array['gexe']))
-            self.dialog.setFilter(
+            dialog = QtGui.QFileDialog()
+            # Prevents exit from GUI after closing dialog
+            dialog.setAttribute(Qt.WA_QuitOnClose, False)
+            dialog.setWindowTitle(QString("Выберите задачу"))
+            dialog.setLabelText(1, QString("Имя файла"))
+            dialog.setLabelText(2, QString("Тип файла"))
+            dialog.setLabelText(3, QString("Добавить"))
+            dialog.setLabelText(4, QString("Отмена"))
+            dialog.setDirectory(dirname(keys.array['gexe']))
+            dialog.setFilter(
                 QString("Задачи Gaussian (*.gjf *.com *.g03)")
                 )
-            self.dialog.setOption(QtGui.QFileDialog.DontUseNativeDialog)
-            self.dialog.exec_()
-            filename = self.dialog.selectedFiles()[0]
+            dialog.setOption(QtGui.QFileDialog.DontUseNativeDialog)
+            dialog.exec_()
+            filename = dialog.selectedFiles()[0]
             if isfile(filename):
                 fakepid = -ord(urandom(1))
                 queue.add(Assignment(fakepid, filename), fakepid)
