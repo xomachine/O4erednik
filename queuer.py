@@ -195,6 +195,7 @@ class Queue():
     _queue = []
     _shared = dict()
     _by_pid = dict()
+    linda = dict()
     _lock = Lock()
     state = State()
     reason = "n"  # Reason of changing state
@@ -238,6 +239,7 @@ class Queue():
         try:
             fs = open(self.current.ifile, 'r')
         except:
+            error("Cann't open file " + self.current.ifile)
             return True
         lines = fs.readlines()
         proc = True
@@ -255,7 +257,7 @@ class Queue():
                     line = "%chk=" + self.current.cbfile + "\n"
                 chk = False  # CHECKME: handle with custom chknames
             elif line.startswith("%lindaworkers"):
-                line = self.lindalock(line[14:]) + "\n"
+                line = self.lindalock(line[14:-1], self.current.pid) + "\n"
             wlines.append(line)
         fs.close()
         if chk:
@@ -271,14 +273,18 @@ class Queue():
 # Do one job from queue
     def do(self):
         self.current = self.pop()
+        self._lock.acquire()
         if self.prepare():
             return True
+        self._lock.release()
         self.current.do()
         self._lock.acquire()
         if self.current.pid in self._by_pid:
             self._by_pid.pop(self.current.pid, self.current)
         self._lock.release()
         self.reason = "e" + self.current.ifile
+        if self.current.pid in self.linda:
+            self.lindaunlock(self.current.pid)
         self.current = None
 
     def abort(self, pid):
@@ -288,15 +294,16 @@ class Queue():
             warning("PID not registered:" + str(pid))
             self._lock.release()
             return
+
         self._by_pid[pid].complete()
         if self._by_pid[pid] is self.current:
             try:
                 self.current.process.kill()
-                if platform == "linux":
-                    call('pkill "l[0-9]{1,5}\\.exe"', shell=True)
-                    # Abort() does not kill child links of gaussian
             except:
                 pass
+            if platform == "linux":
+                call('pkill "l[0-9]{1,5}\\.exe"', shell=True)
+                # kill() does not kill child links of gaussian
         else:
             if self._by_pid[pid] in self._queue:
                 self._queue.remove(self._by_pid[pid])
@@ -412,24 +419,46 @@ class Queue():
         job.complete()
         self.state.set(self.state.get())
 
+# Unlock linda by pid
+    def lindaunlock(self, pid):
+        for addr, n in self.linda[pid]:
+            sc = socket()
+            sc.settimeout(1.0)
+            sc.connect((addr, 9043))
+            sc.send(b'le')
+            sc.close()
+        self.linda.pop(pid, self.linda[pid])
+
 # Find and lock computers for linda
-    def lindalock(self, lindastring):
-        self._lindafree = []
+    def lindalock(self, lindastring, pid):
+        if platform == 'win32':
+            return ""
+        self.linda[pid] = []
         found = 0
         needed = 0
         newlstring = " "
         # Parse lindastring here (only num of requested processors)
         comps = lindastring.split(',')
+        print(comps)
         for comp in comps:
-            needed += int(comp.split(':')[1])
-        ShareHandler.broadcast(None, b'l')  # Call for free computers
-        sleep(10)  # Wait for list formation
-        for addr, n in self._lindafree:  # Adding found to string
-            newlstring += addr + ':' + str(n) + ","
-            found += n
+            if ':' in comp:
+                needed += int(comp.split(':')[1])
+        if needed == 0:
+            return ""
+        # Call for free computers
+        ShareHandler.broadcast(None, b'l' + str(pid).encode('utf-8'))
+        sleep(2)  # Wait for list formation
+        for addr, n in self.linda[pid]:  # Adding found to string
+            sc = socket()
+            sc.settimeout(1.0)
+            sc.connect((addr, 9043))
+            sc.send(b'lb')
+            if sc.recv(2) == b'OK':
+                newlstring += addr + ':' + str(n) + ","
+                found += n
+            sc.close()
             if n >= needed:
                 break
-        self._lindafree = None
         if len(newlstring) > 0:
             return "%lindaworkers=" + newlstring[:-1]
         else:
@@ -638,11 +667,12 @@ class ShareHandler(LogableThread):
                 self.sender = msg[1][0]
                 self.action()
             elif msg[0] == b'l':  # l means linda
-                if queue.state.get() == 'e':
+                if queue.state.get() == 'e' and platform == 'linux':
                     informer = socket()
                     informer.connect((msg[1][0], 9043))
-                    inf = 'i' + str(nprocs)
-                    informer.send(inf.encode('utf-8'))
+                    # Responce contains number of processors and id of job
+                    inf = 'i' + str(nprocs) + ':'
+                    informer.send(inf.encode('utf-8') + msg[1:])
                     informer.close()
 
     def broadcast(self, msg):
@@ -713,19 +743,27 @@ class Listener(LogableThread):
         elif data[0] == 's':
             queue.recerve(conn)
         elif data[0] == 'i':
+            parts = data.split(':')
             try:
-                numprocs = int(data[1:])
+                pid = int(parts[1])
+                procs = int(parts[0][1:])
             except:
-                exception("Cann't parse num of procs from " + str(addr))
+                exception("Cann't get data from message " + data)
                 return
-            if queue._lindafree:
-                queue._lindafree.append((addr, numprocs))
+            if queue.linda[pid]:
+                queue.linda[pid].append((addr, procs))
+                debug(addr + " and " + str(procs) + " added to " + parts[1])
+            else:
+                error("Pid " + parts[1] + " is not registred for linda")
         elif data[0] == 'l':
             if len(data) > 1:
                 if data[1] == 'b':
                     if queue.state.get() == 'e':
                         queue._lock.acquire()
                         queue.current = Assignment()
+                        conn.send(b'OK')
+                    else:
+                        conn.send(b'ER')
                 elif data[1] == 'e':
                     if queue.current and queue.current.ifile == 'LINDA':
                         queue.current = None
