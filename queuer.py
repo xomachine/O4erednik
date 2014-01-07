@@ -433,7 +433,7 @@ class Queue():
 # Find and lock computers for linda
     def lindalock(self, lindastring, pid):
         if platform == 'win32':
-            return ""
+            return "%lindaworkers="
         self.linda[pid] = []
         found = 0
         needed = 0
@@ -445,7 +445,7 @@ class Queue():
             if ':' in comp:
                 needed += int(comp.split(':')[1])
         if needed == 0:
-            return ""
+            return "%lindaworkers="
         # Call for free computers
         ShareHandler.broadcast(None, b'l' + str(pid).encode('utf-8'))
         sleep(2)  # Wait for list formation
@@ -463,7 +463,7 @@ class Queue():
         if len(newlstring) > 0:
             return "%lindaworkers=" + newlstring[:-1]
         else:
-            return ""
+            return "%lindaworkers="
 
 # Reserve and add to queue job from another queuer
     def recerve(self, sock):
