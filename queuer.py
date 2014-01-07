@@ -3,7 +3,6 @@
 
 from socket import socket, gethostbyname, gethostname, gethostbyaddr, SHUT_RDWR
 from socket import SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_DGRAM, SO_BROADCAST
-from signal import SIGKILL
 from threading import Thread, Condition, Lock
 from time import sleep, strftime
 from os.path import abspath, isfile, dirname, basename, getsize, realpath
@@ -182,7 +181,7 @@ class Assignment():
         if self.pid < 1:
             return
         try:
-            kill(self.pid, SIGKILL)
+            kill(self.pid, 9)  # SIGKILL
         except OSError:
             pass
         return
@@ -239,7 +238,7 @@ class Queue():
         try:
             fs = open(self.current.ifile, 'r')
         except:
-            error("Cann't open file " + self.current.ifile)
+            exception("Cann't open file " + self.current.ifile)
             return True
         lines = fs.readlines()
         proc = True
@@ -274,10 +273,12 @@ class Queue():
     def do(self):
         self.current = self.pop()
         self._lock.acquire()
-        if self.prepare():
-            return True
+        r = self.prepare()
         self._lock.release()
-        self.current.do()
+        if r:
+            self.current.complete()
+        else:
+            self.current.do()
         self._lock.acquire()
         if self.current.pid in self._by_pid:
             self._by_pid.pop(self.current.pid, self.current)
@@ -722,17 +723,16 @@ class Listener(LogableThread):
         if not data:
             return
         if data[0] == 'a':  # The dialog may be prefered
+            parts = data.split('::')
             try:
-                pidlen = int(data[1:2])
-                pid = int(data[2:2 + pidlen])
-                kill(pid, 0)
-                arg = data[2 + pidlen:-1]
+                pid = int(parts[1])
+                kill(pid, 19)  # SIGSTOP
+                arg = parts[2][:-1]
             except:
                 error("Incorrect message format: " + data)
                 return
             queue.add(Assignment(pid, arg), pid)
-            conn.send(('O').encode('utf-8'))
-            conn.close()
+            conn.send(('OK').encode('utf-8'))
         elif data[0] == 'k':
             try:
                 pid = int(data[1:])
