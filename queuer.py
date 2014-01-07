@@ -256,7 +256,10 @@ class Queue():
                     line = "%chk=" + self.current.cbfile + "\n"
                 chk = False  # CHECKME: handle with custom chknames
             elif line.startswith("%lindaworkers"):
-                line = self.lindalock(line[14:-1], self.current.pid) + "\n"
+                line = "%lindaworkers=" + self.lindalock(
+                    line[14:-1],
+                    self.current.pid
+                    ) + "\n"
             wlines.append(line)
         fs.close()
         if chk:
@@ -433,19 +436,18 @@ class Queue():
 # Find and lock computers for linda
     def lindalock(self, lindastring, pid):
         if platform == 'win32':
-            return "%lindaworkers="
+            return ""
         self.linda[pid] = []
         found = 0
         needed = 0
         newlstring = " "
         # Parse lindastring here (only num of requested processors)
         comps = lindastring.split(',')
-        print(comps)
         for comp in comps:
             if ':' in comp:
                 needed += int(comp.split(':')[1])
         if needed == 0:
-            return "%lindaworkers="
+            return ""
         # Call for free computers
         ShareHandler.broadcast(None, b'l' + str(pid).encode('utf-8'))
         sleep(2)  # Wait for list formation
@@ -461,9 +463,9 @@ class Queue():
             if n >= needed:
                 break
         if len(newlstring) > 0:
-            return "%lindaworkers=" + newlstring[:-1]
+            return newlstring[:-1]
         else:
-            return "%lindaworkers="
+            return ""
 
 # Reserve and add to queue job from another queuer
     def recerve(self, sock):
