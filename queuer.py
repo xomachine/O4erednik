@@ -14,6 +14,9 @@ from uuid import uuid4
 from logging import basicConfig, debug, DEBUG, info, warning, error, exception
 
 
+# TODO: GAMESS support
+# OPTIMIZE: Possibly Queues from multiprocessor library can be used
+# TODO: Windows support is realy needed?
 #================================================================
 # Platform dependent variables
 #================================================================
@@ -187,6 +190,7 @@ class Assignment():
         return
 
 
+# OPTIMIZE: Queue class is too big!
 #================================================================
 # Queue class begins here
 #================================================================
@@ -435,7 +439,7 @@ class Queue():
 
 # Find and lock computers for linda
     def lindalock(self, lindastring, pid):
-        if platform == 'win32':
+        if platform == 'win32':  # CHECKME: Linda support
             return ""
         self.linda[pid] = []
         found = 0
@@ -721,6 +725,7 @@ class Listener(LogableThread):
             conn.close()
         self.localsock.close()
 
+# OPTIMIZE: It's still looks ugly
     def handle(self, conn, addr, data):
         if not data:
             return
@@ -790,6 +795,7 @@ class Processor(LogableThread):
             queue.do()
 
 
+# TODO: Restart full application without loss data or running jobs
 #================================================================
 # ThreadsHandler class begins here
 #================================================================
@@ -871,6 +877,8 @@ info("=====================================")
 info("Started on " + keys.array['host'])
 info("=====================================")
 
+# OPTIMIZE: How about separated GUI library?
+# TODO: Some interface if GUI not avalible
 #================================================================
 # GUI begins here
 #================================================================
