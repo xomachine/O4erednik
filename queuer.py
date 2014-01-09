@@ -14,9 +14,9 @@ from uuid import uuid4
 from logging import basicConfig, debug, DEBUG, info, warning, error, exception
 
 
-# TODO: GAMESS support
-# OPTIMIZE: Possibly Queues from multiprocessor library can be used
-# TODO: Windows support is realy needed?
+#TODO: GAMESS support
+#OPTIMIZE: Possibly Queues from multiprocessor library can be used
+#TODO: Windows support is realy needed?
 #================================================================
 # Platform dependent variables
 #================================================================
@@ -190,7 +190,7 @@ class Assignment():
         return
 
 
-# OPTIMIZE: Queue class is too big!
+#OPTIMIZE: Queue class is too big!
 #================================================================
 # Queue class begins here
 #================================================================
@@ -326,6 +326,7 @@ class Queue():
         return
 
 # Send job from queue to given target and wait for its completeon
+#FIXME: Avoid multiplie sharing
     def share(self, target):
         info("Trying to share with " + target)
         sock = socket()
@@ -419,6 +420,7 @@ class Queue():
                 self.add(job, job.pid)
                 return 1
         fs.close()
+        #FIXME: Get result before sending new job to same computer
         self.recvfile(job.ofile, sock, b'tl')
         self.recvfile(job.cfile, sock, b'tc')
         self._shared.pop(job, gethostbyaddr(target)[0])
@@ -725,7 +727,7 @@ class Listener(LogableThread):
             conn.close()
         self.localsock.close()
 
-# OPTIMIZE: It's still looks ugly
+#OPTIMIZE: It's still looks ugly
     def handle(self, conn, addr, data):
         if not data:
             return
@@ -795,7 +797,7 @@ class Processor(LogableThread):
             queue.do()
 
 
-# TODO: Restart full application without loss data or running jobs
+#TODO: Restart full application without loss data or running jobs
 #================================================================
 # ThreadsHandler class begins here
 #================================================================
@@ -877,8 +879,8 @@ info("=====================================")
 info("Started on " + keys.array['host'])
 info("=====================================")
 
-# OPTIMIZE: How about separated GUI library?
-# TODO: Some interface if GUI not avalible
+#OPTIMIZE: How about separated GUI library?
+#TODO: Some interface if GUI not avalible
 #================================================================
 # GUI begins here
 #================================================================
