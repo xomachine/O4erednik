@@ -200,6 +200,8 @@ class Queue():
     _by_pid = dict()
     linda = dict()
     _lock = Lock()
+    _sendlock = Lock()
+    _sharelock = False
     state = State()
     reason = "n"  # Reason of changing state
     current = None
@@ -326,19 +328,27 @@ class Queue():
         return
 
 # Send job from queue to given target and wait for its completeon
-#FIXME: Avoid multiplie sharing
     def share(self, target):
+        if self.sharelock:
+            return
+        self._sharelock = True
         info("Trying to share with " + target)
         sock = socket()
         # Handshake with remote comp
         debug("Trying to connect:" + target)
-        sock.connect((target, 9043))
-        sock.send("s".encode('utf-8'))
-        if sock.recv(2) != b'OK':
+        try:
+            sock.connect((target, 9043))
+            sock.send("s".encode('utf-8'))
+            ans = sock.recv(2)
+        except:
+            ans = b'ER'
+        if ans != b'OK':
+            self._sharelock = False
             sock.close()
             return
         debug("Handshake complete:" + target)
         job = self.pop(wait=False)
+        self._sharelock = False
         if job is None:
             sock.send(b'ER')
             sock.close()
@@ -499,13 +509,19 @@ class Queue():
 
 # Stream log of remotely added job
     def sendlog(self, job, host):
+        self._sendlock.acquire()
         sleep(1)
         info("Preparing for streaming " + basename(job.ofile))
         lsock = socket()
         lsock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        lsock.bind(
-            (host, 9109)
-            )
+        try:
+            lsock.bind(
+                (host, 9109)
+                )
+        except:
+            self._sendlock.release()
+            lsock.close()
+            return
         lsock.listen(1)
         debug("Created socket for streaming " + basename(job.ofile))
         sock, addr = lsock.accept()
@@ -515,6 +531,7 @@ class Queue():
         sock.send(b'ts')
         if sock.recv(2) != b'OK':
             error("Unexpected response from " + addr[0])
+            self._sendlock.release()
             return 1
         fs = None
         while job.process.poll() is None:
@@ -530,6 +547,7 @@ class Queue():
                 fs.close()
                 sock.close()
                 lsock.close()
+                self._sendlock.release()
                 return 1
             where = fs.tell()
             buf = fs.read(1024)
@@ -544,6 +562,7 @@ class Queue():
                     fs.close()
                     sock.close()
                     lsock.close()
+                    self._sendlock.release()
                     return 1
                 sock.send(buf)
         if sock.recv(2) == b'RQ':
@@ -560,6 +579,7 @@ class Queue():
             sock.send(b'no')
         sock.close()
         lsock.close()
+        self._sendlock.release()
         return
 
 #----------------------------------------------
@@ -950,6 +970,7 @@ else:
                 name = basename(element.ifile)
                 menu = self.local.addMenu(icon_['wait'], name)
                 menu.setToolTip(element.ifile)
+                #FIXME possible aborting not working
                 abort = lambda: queue.abort(element.pid)
                 act = menu.addAction(icon_['delete'], QString("Удалить"))
                 act.triggered.connect(abort)
