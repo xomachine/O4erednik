@@ -430,7 +430,7 @@ class Queue():
                 self.add(job, job.pid)
                 return 1
         fs.close()
-        #FIXME: Get result before sending new job to same computer
+
         self.recvfile(job.ofile, sock, b'tl')
         self.recvfile(job.cfile, sock, b'tc')
         self._shared.pop(job, gethostbyaddr(target)[0])
