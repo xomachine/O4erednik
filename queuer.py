@@ -329,7 +329,7 @@ class Queue():
 
 # Send job from queue to given target and wait for its completeon
     def share(self, target):
-        if self.sharelock:
+        if self._sharelock:
             return
         self._sharelock = True
         info("Trying to share with " + target)
