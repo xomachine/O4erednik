@@ -288,6 +288,8 @@ class Queue():
             self.current.complete()
         else:
             self.current.do()
+        self._sendlock.acquire()
+        self._sendlock.release()
         self._lock.acquire()
         if self.current.pid in self._by_pid:
             self._by_pid.pop(self.current.pid, self.current)
@@ -519,8 +521,8 @@ class Queue():
                 (host, 9109)
                 )
         except:
-            self._sendlock.release()
             lsock.close()
+            self._sendlock.release()
             return
         lsock.listen(1)
         debug("Created socket for streaming " + basename(job.ofile))
@@ -532,6 +534,7 @@ class Queue():
         if sock.recv(2) != b'OK':
             error("Unexpected response from " + addr[0])
             self._sendlock.release()
+            lsock.close()
             return 1
         fs = None
         while job.process.poll() is None:
