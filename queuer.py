@@ -403,12 +403,13 @@ class Queue():
                     ans = sock.recv(2)
                 else:  # If not in shared, that means job aborted
                     sock.send(b'AT')  # AborT job
-                    return 1
+                    break
             except:
                 exception("Cann't connect to remote computer")
                 info("Turning " + basename(job.ifile) + " back to queue")
                 self._shared.pop(job, gethostbyaddr(target)[0])
                 self.add(job, job.pid)
+                fs.close()
                 return 1
             if ans == b'DT':  # New DaTa is avalible
                 try:
@@ -419,6 +420,7 @@ class Queue():
                     info("Turning " + basename(job.ifile) + " back to queue")
                     self._shared.pop(job, gethostbyaddr(target)[0])
                     self.add(job, job.pid)
+                    fs.close()
                     return 1
                 fs.write(buf)
             elif ans == b'NT':  # NoThing to send
@@ -430,6 +432,8 @@ class Queue():
                 info("Turning " + basename(job.ifile) + " back to queue")
                 self._shared.pop(job, gethostbyaddr(target)[0])
                 self.add(job, job.pid)
+                sock.close()
+                fs.close()
                 return 1
         fs.close()
 
@@ -438,6 +442,7 @@ class Queue():
         self._shared.pop(job, gethostbyaddr(target)[0])
         self._by_pid.pop(job.pid, job)
         sock.close()
+        self.reason = "e" + job.ifile
         job.complete()
         self.state.set(self.state.get())
 
