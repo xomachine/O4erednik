@@ -212,10 +212,10 @@ class Queue():
         self._by_pid[pid] = element
         self._queue.insert(0, element)
         self._lock.release()
-        if self.state.get() == 'w':
-            self.state.set('f')
-        else:
+        if self.state.get() == 'e':
             self.state.set('w')
+        else:
+            self.state.set('f')
         self.reason = "a" + element.ifile
         debug("Added to queue pid=" + str(pid) + ",file=" + element.ifile)
         return
