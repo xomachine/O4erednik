@@ -325,7 +325,10 @@ class Queue():
                     self._shared[self._by_pid[pid]]
                     )
         self._by_pid.pop(pid, self._by_pid[pid])
-        self.state.set(self.state.get())
+        if len(self._queue) == 0:
+            self.state.set('w')
+        else:
+            self.state.set('f')
         self._lock.release()
         return
 
