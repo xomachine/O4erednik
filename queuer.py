@@ -38,28 +38,6 @@ class LogableThread(Thread):
 
 
 ###############################################################################
-# Notifier starts here
-###############################################################################
-class Notifier():
-
-    def __init__(self):
-        super(Notifier, self).__init__()
-        self._new = Event()
-        # message has a following structure:
-        #     [type, (params)]
-        self.message = None
-
-    def get_message(self):
-        self._new.wait()
-        self._new.clear()
-        return self.message
-
-    def notify(self, type, params):
-        self.message = [type, params]
-        self._new.set()
-
-
-###############################################################################
 # Job starts here
 ###############################################################################
 class Job():
@@ -83,14 +61,14 @@ class Queue():
         # Lock to keep one by one access
         self._lock = Lock()
         # Empty indicator
-        self._fill = Event()
+        self.fill = Event()
         # Size of queue
         self.size = 0
 
     def get(self, block=True):
         if block:
-            self._fill.wait()
-        elif not self._fill.is_set():
+            self.fill.wait()
+        elif not self.fill.is_set():
             return None
         self._lock.acquire()
         self._queue.popleft()
@@ -101,7 +79,7 @@ class Queue():
         self._lock.acquire()
         self._queue.append(obj)
         self.size = len(self._queue)
-        self._fill.set()
+        self.fill.set()
         self._lock.release()
 
 
@@ -110,9 +88,25 @@ class Queue():
 ###############################################################################
 class Watcher(LogableThread):
 
-    def __init__(self):
+    def __init__(self, peer):
         super(Watcher, self).__init__()
-        self.name = 'Watcher'
+        self.name = 'watcher-' + peer
+
+
+###############################################################################
+# Notofier starts here
+###############################################################################
+class Notifier(LogableThread):
+
+    def __init__(self):
+        super(Notifier, self).__init__()
+        self.name = 'Notifier'
+        self.messages = []
+        self._new = Event()  # New event occured
+
+    def event(self, msg):
+        self.messages.append(msg)
+        self._new.set()
 
 
 ###############################################################################
@@ -130,6 +124,7 @@ class Feeder(LogableThread):
 # All reactions on messages is in self.msgs
     def fill_msgs(self):
         self.msgs[b'AJ'] = self.m_AddJob
+        self.msgs[b'SJ'] = self.m_ShareJob
 
     def stop(self):
         self._alive = False
@@ -152,6 +147,11 @@ class Feeder(LogableThread):
         jobinfo = loads(con.recv(512).decode('utf-8'))
         shared.queue.put(Job(*jobinfo))
 
+    def m_ShareJob(self, con, peer):
+        if shared.queue.fill.isSet():
+            con.send(b'FL')
+            return
+
 
 ###############################################################################
 # LocalProcessor starts here
@@ -162,6 +162,13 @@ class LocalProcessor(LogableThread):
         super(LocalProcessor, self).__init__()
         self.name = 'LocalProcessor'
         self.curjob = None
+        self.preparators = dict()
+        self.workers = dict()
+        self.fill_workers()
+
+    def fill_workers(self):
+        self.preparators['Gaussian'] = self.prepareGau
+        self.workers['Gaussian'] = self.doGau
 
     def run(self):
         while self._alive:
@@ -178,9 +185,21 @@ class LocalProcessor(LogableThread):
             shared.queue.task_done()
 
     def prepare(self):
-        pass
+        jt = self.curjob.type
+        if jt in self.preparators:
+            self.preparators[jt]()
 
     def do(self):
+        jt = self.curjob.type
+        if jt in self.workers:
+            self.workers[jt]()
+
+# Gaussian worker
+###############################################################################
+    def prepareGau(self):
+        pass
+
+    def doGau(self):
         pass
 
 
@@ -192,6 +211,8 @@ class RemoteProcessor(LogableThread):
     def __init__(self):
         super(RemoteProcessor, self).__init__()
         self.name = 'RemoteProcessor'
+        # List of shared jobs
+        self.shared = []
 
 
 ###############################################################################
@@ -206,6 +227,7 @@ class SharedObjects():
         self.spy = Notifier()
         self.settings = dict()
         self.default()
+        self.spy.start()
 
 # Load nessesery variables from file
     def load(self, filename):
