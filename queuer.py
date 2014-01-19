@@ -554,7 +554,7 @@ class Queue():
         while job.process.poll() is None:
             req = sock.recv(2)
             if req == b'AT':  # if AborTed
-                self.abort(job)
+                self.abort(job.pid)
                 fs.close()
                 sock.close()
                 lsock.close()
@@ -569,7 +569,7 @@ class Queue():
             else:
                 sock.send(b'DT')
                 if sock.recv(2) != b'GT':
-                    self.abort(job)
+                    self.abort(job.pid)
                     fs.close()
                     sock.close()
                     lsock.close()
