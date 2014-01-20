@@ -342,7 +342,7 @@ class Queue():
         # Handshake with remote comp
         debug("Trying to connect:" + target)
         try:
-            sock.connect((target, 9043))
+            sock.connect((target, 59043))
             sock.send("s".encode('utf-8'))
             ans = sock.recv(2)
         except:
@@ -373,7 +373,7 @@ class Queue():
         # Start recerving stream and results
         sock = socket()
         try:
-            sock.connect((target, 9109))
+            sock.connect((target, 59109))
         except:
             error(
                 "Cann't connect to " + target + " for " + basename(job.ofile)
@@ -454,7 +454,7 @@ class Queue():
         for addr, n in self.linda[pid]:
             sc = socket()
             sc.settimeout(1.0)
-            sc.connect((addr, 9043))
+            sc.connect((addr, 59043))
             sc.send(b'le')
             sc.close()
         self.linda.pop(pid, self.linda[pid])
@@ -480,7 +480,7 @@ class Queue():
         for addr, n in self.linda[pid]:  # Adding found to string
             sc = socket()
             sc.settimeout(1.0)
-            sc.connect((addr, 9043))
+            sc.connect((addr, 59043))
             sc.send(b'lb')
             if sc.recv(2) == b'OK':
                 newlstring += addr + ':' + str(n) + ","
@@ -526,7 +526,7 @@ class Queue():
         lsock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         try:
             lsock.bind(
-                (host, 9109)
+                (host, 59109)
                 )
         except:
             lsock.close()
@@ -694,7 +694,7 @@ class ShareHandler(LogableThread):
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         try:
-            self.sock.bind((keys.array['lbcastaddr'], 5043))
+            self.sock.bind((keys.array['lbcastaddr'], 55043))
         except:
             warning("Local network not found!")
             return
@@ -709,7 +709,7 @@ class ShareHandler(LogableThread):
             elif msg[0] == b'l':  # l means linda
                 if queue.state.get() == 'e' and platform == 'linux':
                     informer = socket()
-                    informer.connect((msg[1][0], 9043))
+                    informer.connect((msg[1][0], 59043))
                     # Responce contains number of processors and id of job
                     inf = 'i' + str(nprocs) + ':'
                     informer.send(inf.encode('utf-8') + msg[1:])
@@ -719,7 +719,7 @@ class ShareHandler(LogableThread):
         sendsock = socket(AF_INET, SOCK_DGRAM)
         sendsock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         sendsock.setblocking(0)
-        sendsock.sendto(msg, (keys.array['bcastaddr'], 5043))
+        sendsock.sendto(msg, (keys.array['bcastaddr'], 55043))
         sendsock.close()
         return
 
@@ -745,7 +745,7 @@ class Listener(LogableThread):
         self.localsock.close()
 
     def run(self):
-        self.localsock.bind((self.host, 9043))
+        self.localsock.bind((self.host, 59043))
         self.localsock.listen(5)
         while self.alive:
             try:
