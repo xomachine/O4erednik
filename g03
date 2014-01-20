@@ -2,18 +2,10 @@
 PID=$$
 L=$(uname -n)
 if [ -z $* ]; then exit 1; fi
-exec 5<>/dev/tcp/$L/9043
-echo -e "a::$PID::$*" >&5 
-answer=$(cat <&5)
-exec 5<&-
-exec 5>&-
-if [[ $answer == "OK" ]];
-then
-    while true; do sleep 1s; done
-else
-    echo "Can't connect to the daemon"
-    exit 1
-fi
+echo -e "[\"AJ\", [\"g03\", $PID, {\"ifile\": \"$*\"}]]" >/dev/udp/$L/59043
+exec sleep 2s
+echo "Can't connect to the daemon"
+exit 1
 
 
 
