@@ -9,7 +9,7 @@ exec 5<&-
 exec 5>&-
 if [[ $answer == "OK" ]];
 then
-    while true; do sleep 1s; done
+    exec sleep 1h
 else
     echo "Can't connect to the daemon"
     exit 1
