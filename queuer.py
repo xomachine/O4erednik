@@ -3,13 +3,14 @@
 
 # Imports
 from threading import Thread, Event, Lock
+from os import kill
 from socket import socket, gethostbyname, gethostname
-from socket import SHUT_RDWR
+from socket import SHUT_RDWR, SOCK_DGRAM, AF_INET
 from json import dump, load, loads
-from logging import basicConfig, debug, DEBUG, info, warning, error, exception
-from os.path import abspath, isfile, dirname, basename, getsize, realpath
+from logging import basicConfig, DEBUG, exception
+from os.path import isfile, dirname, realpath
 #TODO: GAMESS support
-#TODO: Windows support is realy needed?
+#TODO: Is windows support really nessesary?
 #TODO: Hot restart
 
 
@@ -117,14 +118,14 @@ class Feeder(LogableThread):
     def __init__(self):
         super(Feeder, self).__init__()
         self.name = 'Feeder'
-        self.listener = socket()
-        self.msgs = dict()
-        self.fill_msgs()
+        self.listener = socket(AF_INET, SOCK_DGRAM)
+        self.msghandlers = dict()
+        self.fill_handlers()
 
 # All reactions on messages is in self.msgs
-    def fill_msgs(self):
-        self.msgs[b'AJ'] = self.m_AddJob
-        self.msgs[b'SJ'] = self.m_ShareJob
+    def fill_handlers(self):
+        self.msghandlers[b'AJ'] = self.m_AddJob
+        self.msghandlers[b'SJ'] = self.m_ShareJob
 
     def stop(self):
         self._alive = False
@@ -132,24 +133,26 @@ class Feeder(LogableThread):
         self.listener.close()
 
     def run(self):
-        self.listener.bind((shared.settings['host'], 933))
+        self.listener.bind((shared.settings['host'], 59043))
         self.listener.listen(1)
         while self._alive:
-            connection, peer = self.listener.accept()
-            msg = connection.recv(2)
-            if msg in self.msgs:
-                self.msgs[msg](connection, peer)
-            connection.close()
+            msg = self.listener.recvfrom(1024)
+            if msg is None:
+                continue
+            data, peer = msg
+            mtype, mdata = loads(data.decode('utf-8'))
+            if mtype in self.msgs:
+                self.msgs[mtype](mdata, peer)
 
-    def m_AddJob(self, con, peer):
-        con.send(b'RQ')
-        # jobinfo = [type, id, params={}]
-        jobinfo = loads(con.recv(512).decode('utf-8'))
-        shared.queue.put(Job(*jobinfo))
+# Handlers list
+###############################################################################
+    def m_AddJob(self, data, peer):
+        # data = [type, id, params={}]
+        shared.queue.put(Job(*data))
+        kill(data[1], 19)  # Sends SIGSTOP to fake process
 
-    def m_ShareJob(self, con, peer):
+    def m_ShareJob(self, data, peer):
         if shared.queue.fill.isSet():
-            con.send(b'FL')
             return
 
 
@@ -164,11 +167,11 @@ class LocalProcessor(LogableThread):
         self.curjob = None
         self.preparators = dict()
         self.workers = dict()
-        self.fill_workers()
+        self.fill_handlers()
 
-    def fill_workers(self):
-        self.preparators['Gaussian'] = self.prepareGau
-        self.workers['Gaussian'] = self.doGau
+    def fill_handlers(self):
+        self.preparators['G03'] = self.prepareG03
+        self.workers['G03'] = self.doG03
 
     def run(self):
         while self._alive:
@@ -196,10 +199,10 @@ class LocalProcessor(LogableThread):
 
 # Gaussian worker
 ###############################################################################
-    def prepareGau(self):
+    def prepareG03(self):
         pass
 
-    def doGau(self):
+    def doG03(self):
         pass
 
 
