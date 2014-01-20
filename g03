@@ -2,7 +2,7 @@
 PID=$$
 L=$(uname -n)
 if [ -z $* ]; then exit 1; fi
-exec 5<>/dev/tcp/$L/9043
+exec 5<>/dev/tcp/$L/59043
 echo -e "a::$PID::$*" >&5 
 answer=$(cat <&5)
 exec 5<&-
