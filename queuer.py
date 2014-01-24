@@ -6,7 +6,7 @@ from threading import Thread, Event, Lock
 from os import kill
 from socket import socket, gethostbyname, gethostname
 from socket import SHUT_RDWR, SOCK_DGRAM, AF_INET
-from json import dump, load, loads
+from json import dump, load, loads, dumps
 from logging import basicConfig, DEBUG, exception
 from os.path import isfile, dirname, realpath
 #TODO: GAMESS support
@@ -25,6 +25,9 @@ class LogableThread(Thread):
         self._real_run = self.run
         self.run = self._wrap_run
         self._alive = True
+
+    def stop(self):
+        self._alive = False
 
     def _wrap_run(self):
         while self._alive:
@@ -74,6 +77,8 @@ class Queue():
         self._lock.acquire()
         self._queue.popleft()
         self.size = len(self._queue)
+        if self.size == 0:
+            self.fill.clear()
         self._lock.release()
 
     def put(self, obj):
@@ -85,58 +90,35 @@ class Queue():
 
 
 ###############################################################################
-# Watcher starts here
-###############################################################################
-class Watcher(LogableThread):
-
-    def __init__(self, peer):
-        super(Watcher, self).__init__()
-        self.name = 'watcher-' + peer
-
-
-###############################################################################
-# Notofier starts here
-###############################################################################
-class Notifier(LogableThread):
-
-    def __init__(self):
-        super(Notifier, self).__init__()
-        self.name = 'Notifier'
-        self.messages = []
-        self._new = Event()  # New event occured
-
-    def event(self, msg):
-        self.messages.append(msg)
-        self._new.set()
-
-
-###############################################################################
 # Feeder starts here
 ###############################################################################
-class Feeder(LogableThread):
+class UDPServer(LogableThread):
 
     def __init__(self):
-        super(Feeder, self).__init__()
-        self.name = 'Feeder'
-        self.listener = socket(AF_INET, SOCK_DGRAM)
-        self.msghandlers = dict()
+        super(UDPServer, self).__init__()
+        self.name = 'UDPServer'
+        self.connector = socket(AF_INET, SOCK_DGRAM)
         self.fill_handlers()
 
 # All reactions on messages is in self.msgs
     def fill_handlers(self):
-        self.msghandlers[b'AJ'] = self.m_AddJob
-        self.msghandlers[b'SJ'] = self.m_ShareJob
+        self.msghandlers = [
+            self.m_AddJob,  # Add signal 0
+            self.m_ShareJob,  # Share signal 1
+            self.m_LFF,  # Looking For Free 2
+            self.m_Free,  # Free signal 3
+            ]
 
     def stop(self):
         self._alive = False
-        self.listener.shutdown(SHUT_RDWR)
-        self.listener.close()
+        self.connector.shutdown(SHUT_RDWR)
+        self.connector.close()
 
     def run(self):
-        self.listener.bind((shared.settings['host'], 59043))
-        self.listener.listen(1)
+        self.connector.bind((shared.settings['host'], 59043))
+        self.connector.listen(1)
         while self._alive:
-            msg = self.listener.recvfrom(1024)
+            msg = self.connector.recvfrom(1024)
             if msg is None:
                 continue
             data, peer = msg
@@ -152,18 +134,27 @@ class Feeder(LogableThread):
         kill(data[1], 19)  # Sends SIGSTOP to fake process
 
     def m_ShareJob(self, data, peer):
-        if shared.queue.fill.isSet():
-            return
+        pass
+
+    def m_LFF(self, data, peer):
+        if shared.processor.curjob is None:
+            self.connector.sendto(
+                dumps([3, None]).encode('utf-8'),
+                (peer, 59043)
+                )
+
+    def m_Free(self, data, peer):
+        pass
 
 
 ###############################################################################
 # LocalProcessor starts here
 ###############################################################################
-class LocalProcessor(LogableThread):
+class Processor(LogableThread):
 
     def __init__(self):
-        super(LocalProcessor, self).__init__()
-        self.name = 'LocalProcessor'
+        super(Processor, self).__init__()
+        self.name = 'Processor'
         self.curjob = None
         self.preparators = dict()
         self.workers = dict()
@@ -176,16 +167,11 @@ class LocalProcessor(LogableThread):
     def run(self):
         while self._alive:
             self.curjob = shared.queue.get()
-            # Set busy flag, that lets RemoteProcessor work
-            shared.busy.set()
             # Prepare input
             self.prepare()
             # Do current job
             self.do()
-            # Tell other system, that job is done and LocalProcessor is free
-            shared.busy.clear()
             self.curjob = None
-            shared.queue.task_done()
 
     def prepare(self):
         jt = self.curjob.type
@@ -207,18 +193,6 @@ class LocalProcessor(LogableThread):
 
 
 ###############################################################################
-# RemoteProcessor starts here
-###############################################################################
-class RemoteProcessor(LogableThread):
-
-    def __init__(self):
-        super(RemoteProcessor, self).__init__()
-        self.name = 'RemoteProcessor'
-        # List of shared jobs
-        self.shared = []
-
-
-###############################################################################
 # ObjectsGroup begins here
 ###############################################################################
 class SharedObjects():
@@ -226,11 +200,10 @@ class SharedObjects():
     def __init__(self):
         super(SharedObjects, self).__init__()
         self.queue = Queue()
-        self.busy = Event()
-        self.spy = Notifier()
         self.settings = dict()
+        self.server = UDPServer()
+        self.processor = Processor()
         self.default()
-        self.spy.start()
 
 # Load nessesery variables from file
     def load(self, filename):
@@ -240,10 +213,6 @@ class SharedObjects():
             objs = load(f)
         self.settings.update(objs['settings'])
         self.queue.load(objs['queue'])
-        if objs['busy']:
-            self.busy.set()
-        else:
-            self.busy.clear()
         if self.settings['autohost']:
             self.settings['host'] = gethostbyname(gethostname())
 
@@ -254,7 +223,6 @@ class SharedObjects():
     def save(self, filename):
         objs = dict()
         objs['settings'] = self.settings
-        objs['busy'] = self.busy.isSet()
         objs['queue'] = self.queue._queue
         with open(filename, 'w') as f:
             dump(objs, f, indent=4)
@@ -282,6 +250,3 @@ if __name__ == '__main__':
     shared.load(selfpath + slash + 'shared.jsn')
     shared.save(selfpath + slash + 'shared.jsn')
     # main working threads initialization
-    feeder = Feeder()
-    localproc = LocalProcessor()
-    remoteproc = RemoteProcessor()
