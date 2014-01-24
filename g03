@@ -2,7 +2,7 @@
 PID=$$
 L=$(uname -n)
 if [ -z $* ]; then exit 1; fi
-echo -e "[\"AJ\", [\"g03\", $PID, {\"ifile\": \"$*\"}]]" >/dev/udp/$L/59043
+echo -e "[0, [\"g03\", $PID, {\"ifile\": \"$*\"}]]" >/dev/udp/$L/59043
 exec sleep 2s
 echo "Can't connect to the daemon"
 exit 1
