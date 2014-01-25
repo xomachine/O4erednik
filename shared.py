@@ -3,7 +3,7 @@
 from threading import Lock, Event
 from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
 from socket import SOL_SOCKET, SO_REUSEADDR
-from json import dump, load
+from json import dump, load, dumps
 from os.path import realpath, isfile, dirname
 try:
     from gui import Backend
@@ -16,7 +16,10 @@ except ImportError:
 
         def signal(self, signal):
             if signal[0] == 'empty':
-                self.sendto(b'[\"F\"]', ('<broadcast>', 50000))
+                self.sendto(
+                    dumps(['F', None]).encode('utf-8'),
+                    ('<broadcast>', 50000)
+                    )
 
 else:
     class GUIBackend(Backend):
@@ -24,6 +27,15 @@ else:
         def __init__(self, udp):
             super(GUIBackend, self).__init__()
             self.sendto = udp.sendto
+            self.sEmpty_old = self.sEmpty
+            self.sEmpty = self.sEmpty_new
+
+        def sEmpty_new(self, data):
+            self.sendto(
+                dumps(['F', None]).encode('utf-8'),
+                ('<broadcast>', 50000)
+                )
+            self.sEmpty_old(data)
 
 
 class Queue():
@@ -34,7 +46,7 @@ class Queue():
         self._lock = Lock()
         self.fill = Event()
         self.size = 0
-        self.inform = inform  # Function to send signals for GUI
+        self.inform = inform  # Function to send signals to GUI
 
     def put(self, obj):
         with self._lock:
@@ -58,6 +70,9 @@ class Queue():
         self.inform(['get', obj])
         return obj
 
+    def is_contain(self, obj):
+        return True if obj in self._queue else False
+
 
 class Resources():
 
@@ -74,6 +89,7 @@ class Resources():
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.udpsocket.bind((self.settings['host'], 50000))
+        self.udpsocket.listen(5)
         # GUIBackend
         self.backend = GUIBackend(self.udpsocket)
         # Queue
@@ -101,5 +117,5 @@ class Resources():
 
 # Used to unfreeze shared resources after programm restarted
     def unfreeze(self):
-        if not isfile(self.path + '/frozen.data'):
+        if not isfile(self.path + '/frozen.dat'):
             return
