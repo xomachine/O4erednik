@@ -18,3 +18,10 @@ class LoggableThread(Thread):
             self._real_run()
         except:
             exception('Uncaught exception was occured!')
+
+
+class FileTransfer():
+
+    def __init__(self):
+        super(FileTransfer, self).__init__()
+        #TODO: FileTransfer for remote primitives from core.py
