@@ -41,24 +41,21 @@ else:
 
 class Queue():
 
-    def __init__(self, inform):
+    def __init__(self):
         super(Queue, self).__init__()
         self._queue = []
         self._lock = Lock()
         self.fill = Event()
         self.size = 0
-        self.inform = inform  # Function to send signals to GUI
 
     def put(self, obj):
         with self._lock:
             self._queue.append(obj)
             self.fill.set()
             self.size += 1
-        self.inform(['put', obj])
 
     def get(self, block=True):
         if not self.fill.isSet():
-            self.inform(['empty'])
             if block:
                 self.fill.wait()
             else:
@@ -68,7 +65,6 @@ class Queue():
             self.size -= 1
             if self.size == 0:
                 self.fill.clear()
-        self.inform(['get', obj])
         return obj
 
     def is_contain(self, obj):
@@ -101,6 +97,7 @@ class Resources():
     def default(self):
         self.settings['host'] = gethostname()
         self.settings['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
+        self.settings['g03exe'] = ''
         # To be continued...
 
     def save(self):
