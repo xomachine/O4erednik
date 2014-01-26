@@ -15,7 +15,7 @@ except ImportError:
             super(GUIBackend, self).__init__()
             self.sendto = udp.sendto
 
-        def signal(self, signal):
+        def signal(self, *signal):
             if signal[0] == 'empty':
                 self.sendto(
                     dumps(['F', None]).encode('utf-8'),
@@ -90,7 +90,7 @@ class Resources():
         # GUIBackend
         self.backend = GUIBackend(self.udpsocket)
         # Queue
-        self.queue = Queue(self.backend.signal)
+        self.queue = Queue()
         # If programm was frozen...
         self.unfreeze()
 
