@@ -3,9 +3,10 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
-from os import kill
+from os import kill, killpg, getpgid
 from os.path import isfile, isdir, dirname
-from socket import socket
+from socket import socket, SOL_SOCKET, SO_REUSEADDR
+from subprocess import Popen, CREATE_NEW_PROCESS_GROUP
 
 
 class Job():
@@ -27,6 +28,7 @@ class Processor(LogableThread):
         self.queue = shared.queue
         self.inform = shared.backend.signal
         self.nproc = shared.settings['nproc']
+        self.g03exe = shared.settings['g03exe']
         # Fill workers
         self.fill_workers()
 
@@ -37,9 +39,13 @@ class Processor(LogableThread):
 
     def run(self):
         while self._alive:
+            if not self.queue.fill.isSet():
+                self.inform('empty')
             self.cur = self.queue.get()
             if self.cur.type in self.workers:
+                self.inform('start', self.cur.params['ifile'])
                 self.workers[self.cur.type]()
+                self.inform('done', self.cur.params['ifile'])
             self.cur = None
 
 # Workers
@@ -73,7 +79,13 @@ class Processor(LogableThread):
             for buf in wlines:
                 f.write(buf)
         # Execution
-        pass
+        proc = Popen(
+            [self.g03exe, ifile],
+            cwd=dirname(ifile),
+            creationflags=CREATE_NEW_PROCESS_GROUP
+            )
+        self.pgid = getpgid(proc.pid)
+        proc.wait()
 
 
 class RemoteReporter(LogableThread, FileTransfer):
@@ -91,7 +103,8 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.pooler = lambda: True if self.cur is processor.cur else False
         # Socket creation
         self.tcp = socket()
-        self.tcp.settimeout(10)
+        self.tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        self.tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
         self.tcp.bind((host, 50000))
         self.tcp.listen(1)
         self.setsocket(self.tcp)  # Setting socket for file transfer
@@ -113,7 +126,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         self.inform = shared.backend.signal
         # Socket creation
         self.tcp = socket()
-        self.tcp.settimeout(10)
+        self.tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
         try:
             self.tcp.connect((peer, 50000))
         except:
@@ -139,6 +152,7 @@ class UDPServer(LogableThread):
         self.shared = shared
         self.queue = shared.queue
         self.udp = shared.udpsocket
+        self.inform = shared.backend.signal
         # Creating queue processor
         self.processor = Processor(self.shared)
         # Fill message-action dictonary
@@ -149,6 +163,7 @@ class UDPServer(LogableThread):
             'F': self.mFree,  # To be continued...
             'A': self.mAdd,
             'L': self.mLFF,
+            'K': self.mKill,
             }
 
     def run(self):
@@ -166,6 +181,7 @@ class UDPServer(LogableThread):
         job = Job(*params)
         self.queue.put(job)
         kill(job.id, 19)
+        self.inform('add', job.params['ifile'])
 
     # Possibility to share work
     def mFree(self, params, peer):
@@ -183,3 +199,6 @@ class UDPServer(LogableThread):
                 dumps(['F', None]).encode('utf-8'),
                 (peer, 50000)
                 )
+
+    def mKill(self, params, peer):
+        killpg(self.processor.pgid, 9)  # Kill current task with SIGKILL
