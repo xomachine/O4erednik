@@ -5,6 +5,7 @@ from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
 from socket import SOL_SOCKET, SO_REUSEADDR
 from json import dump, load, dumps
 from os.path import realpath, isfile, dirname
+from os import sysconf
 try:
     from gui import Backend
 except ImportError:
@@ -99,6 +100,7 @@ class Resources():
 
     def default(self):
         self.settings['host'] = gethostname()
+        self.settings['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
         # To be continued...
 
     def save(self):
