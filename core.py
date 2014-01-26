@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from api import LogableThread
+from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
 from os import kill
@@ -47,7 +47,7 @@ class Processor(LogableThread):
         pass
 
 
-class RemoteReporter(LogableThread):
+class RemoteReporter(LogableThread, FileTransfer):
 
     def __init__(self, processor, shared, peer):
         super(RemoteReporter, self).__init__()
@@ -62,8 +62,10 @@ class RemoteReporter(LogableThread):
         self.pooler = lambda: True if self.cur is processor.cur else False
         # Socket creation
         self.tcp = socket()
+        self.tcp.settimeout(10)
         self.tcp.bind((host, 50000))
         self.tcp.listen(1)
+        self.setsocket(self.tcp)  # Setting socket for file transfer
 
     def run(self):
         pass
@@ -72,7 +74,7 @@ class RemoteReporter(LogableThread):
         return self.checker() or self.pooler()
 
 
-class RemoteReceiver(LogableThread):
+class RemoteReceiver(LogableThread, FileTransfer):
 
     def __init__(self, shared, peer):
         super(RemoteReceiver, self).__init__()
@@ -82,12 +84,14 @@ class RemoteReceiver(LogableThread):
         self.inform = shared.backend.signal
         # Socket creation
         self.tcp = socket()
+        self.tcp.settimeout(10)
         try:
             self.tcp.connect((peer, 50000))
         except:
             error('Unable to connect remote worker' + peer)
             self._alive = False
             return
+        self.setsocket(self.tcp)
         self.job = self.queue.get()
         self.inform('shared', self.job)
 
