@@ -4,6 +4,7 @@ from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
 from os import kill
+from os.path import isfile, isdir, dirname
 from socket import socket
 
 
@@ -25,6 +26,7 @@ class Processor(LogableThread):
         # Binding shared objects
         self.queue = shared.queue
         self.inform = shared.backend.signal
+        self.nproc = shared.settings['nproc']
         # Fill workers
         self.fill_workers()
 
@@ -44,6 +46,33 @@ class Processor(LogableThread):
 
     # Gaussian 03 worker
     def g03(self):
+        ifile = self.cur.params['ifile']
+        if not isfile(ifile):
+            return
+        # Preparation
+        wlines = ["%nprocshared=" + str(self.nproc) + "\n"]
+        # Set number of processors by default
+        with open(ifile, 'r') as f:
+            lines = f.readlines()
+            for buf in lines:
+                if buf.startswith('%lindaworkers'):
+                    buf = "%lindaworkers=\n"
+                    #TODO: linda support
+                elif buf.startswith('%nprocshared'):
+                    buf = '%nprocshared=' + str(self.nproc) + "\n"
+                    # Overwrite number of processors and remove default
+                    # as annessesery
+                    wlines[0] = ""
+                elif buf.startswith('%chk'):
+                    # If dir to chk file not exist or %chk refers to directory,
+                    # save chk to same place as input
+                    if isdir(buf[5:-1]) or not isdir(dirname(buf[5:-1])):
+                        buf = "%chk=" + ifile[:-3] + "chk\n"
+                wlines.append(buf)
+        with open(ifile, 'w') as f:
+            for buf in wlines:
+                f.write(buf)
+        # Execution
         pass
 
 
