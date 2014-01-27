@@ -49,10 +49,11 @@ class Processor(LogableThread):
                 self.inform('start', self.cur.id)
                 self.workers[self.cur.type]()
                 self.inform('done', self.cur.id)
-                try:
-                    kill(self.cur.id, 9)  # SIGKILL for fake exe
-                except:
-                    pass
+                if self.job.id > 0:
+                    try:
+                        kill(self.job.id, 9)
+                    except:
+                        pass
             self.cur = None
 
 # Workers
@@ -205,7 +206,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         # Sending job object as it is
         jpack = dumps([
             self.job.type,
-            self.job.id,
+            0,  # Id of remote job must be 0 to avoid spontanous process kills
             self.job.files,
             self.job.params
             ])
@@ -226,6 +227,11 @@ class RemoteReceiver(LogableThread, FileTransfer):
             elif req == 'S':  # Start streaming
                 self.recvfile(param, self._alive)
             elif req == 'D':  # All Done, job completed
+                if self.job.id > 0:
+                    try:
+                        kill(self.job.id, 9)
+                    except:
+                        pass
                 self.inform('done', self.job.id)
                 self.stop()
             else:
