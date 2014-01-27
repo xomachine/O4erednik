@@ -2,7 +2,7 @@
 
 from threading import Lock, Event
 from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
-from socket import SOL_SOCKET, SO_REUSEADDR
+from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, environ, makedirs
@@ -90,8 +90,8 @@ class Resources():
         # Socket
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        self.udpsocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         self.udpsocket.bind((self.settings['host'], 50000))
-        self.udpsocket.listen(5)
         # GUIBackend
         self.backend = GUIBackend(self.udpsocket)
         # Queue
