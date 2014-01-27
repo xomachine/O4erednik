@@ -30,6 +30,7 @@ class Processor(LogableThread):
         # Binding shared objects
         self.queue = shared.queue
         self.inform = shared.backend.signal
+        self.udp = shared.udpsocket
         self.nproc = shared.settings['nproc']
         self.g03exe = shared.settings['g03exe']
         # Fill workers
@@ -43,8 +44,18 @@ class Processor(LogableThread):
     def run(self):
         while self._alive:
             if not self.queue.fill.isSet():
+                # Send Free signal when queue is empty
+                self.udp.sendto(
+                    dumps(['F', None]).encode('utf-8'),
+                    ('<broadcast>', 50000)
+                    )
                 self.inform('empty')
             self.cur = self.queue.get()
+            if self.queue.fill.isSet():  # Look For Free if queue still fill
+                self.udp.sendto(
+                    dumps(['L', None]).encode('utf-8'),
+                    ('<broadcast>', 50000)
+                    )
             if self.cur.type in self.workers:
                 self.inform('start', self.cur.id)
                 self.workers[self.cur.type]()
@@ -274,6 +285,11 @@ class UDPServer(LogableThread):
             }
 
     def run(self):
+        self.udp.sendto(
+            dumps(['F', None]).encode('utf-8'),
+            ('<broadcast>', 50000)
+            )
+        self.processor.start()
         while self._alive:
             data, peer = self.udp.recvfrom(1024)
             debug(data)
@@ -286,6 +302,11 @@ class UDPServer(LogableThread):
     # Local addition to queue
     def mAdd(self, params, peer):
         job = Job(*params)
+        if self.processor.cur:  # Look For Free if processor is already busy
+            self.udp.sendto(
+                dumps(['L', None]).encode('utf-8'),
+                ('<broadcast>', 50000)
+                )
         self.queue.put(job)
         kill(job.id, 19)
         self.inform('add', job)
@@ -303,6 +324,11 @@ class UDPServer(LogableThread):
             (peer, 50000)
             )
         self.receivers[peer] = RemoteReceiver(self.shared, peer)
+        if self.queue.fill.isSet():  # Look For Free if queue still fill
+            self.udp.sendto(
+                dumps(['L', None]).encode('utf-8'),
+                ('<broadcast>', 50000)
+                )
         self.receivers[peer].start()
 
     # Search for possibility to share work
