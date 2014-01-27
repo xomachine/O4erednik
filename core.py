@@ -45,16 +45,16 @@ class Processor(LogableThread):
                 self.inform('empty')
             self.cur = self.queue.get()
             if self.cur.type in self.workers:
-                self.inform('start', self.cur.params['ifile'])
+                self.inform('start', self.cur.id)
                 self.workers[self.cur.type]()
-                self.inform('done', self.cur.params['ifile'])
+                self.inform('done', self.cur.id)
             self.cur = None
 
 # Workers
 
     # Gaussian 03 worker
     def g03(self):
-        ifile = self.cur.params['ifile']
+        ifile = self.cur.params['files']['ifile']
         if not isfile(ifile):
             return
         # Preparation
@@ -98,7 +98,6 @@ class RemoteReporter(LogableThread, FileTransfer):
         # Binding shared objects
         host = shared.settings['host']
         self.cur = Job()
-        self.inform = shared.backend.signal
         self.queue = shared.queue
         self.checker = lambda: True if self.queue.is_contain(
             self.cur) else False
@@ -111,6 +110,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         tcp.listen(1)
         self.tcp, addr = tcp.accept()
         self.setsocket(self.tcp)  # Setting socket for file transfer
+        tcp.close()
 
     def run(self):
         pass
@@ -139,7 +139,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
-        self.inform('shared', (self.job.params['ifile'], self.peer))
+        self.inform('shared', (self.job.id, self.peer))
 
     def run(self):
         if self._alive is False:
@@ -190,7 +190,7 @@ class UDPServer(LogableThread):
         job = Job(*params)
         self.queue.put(job)
         kill(job.id, 19)
-        self.inform('add', job.params['ifile'])
+        self.inform('add', (job.params['files']['ifile'], job.id))
 
     # Possibility to share work
     def mFree(self, params, peer):
@@ -224,4 +224,4 @@ class UDPServer(LogableThread):
             self.receivers[params].stop()
 
     def mShare(self, params, peer):
-        RemoteReporter(self.shared, peer)
+        RemoteReporter(self.shared, peer).start()
