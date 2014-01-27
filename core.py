@@ -13,10 +13,11 @@ from shared import Resources
 
 class Job():
 
-    def __init__(self, jtype='dummy', uid=0, params=None):
+    def __init__(self, jtype='dummy', uid=0, files=dict(), params=dict()):
         super(Job, self).__init__()
         self.id = uid
         self.type = jtype
+        self.files = files
         self.params = params
 
 
@@ -54,7 +55,7 @@ class Processor(LogableThread):
 
     # Gaussian 03 worker
     def g03(self):
-        ifile = self.cur.params['files']['ifile']
+        ifile = self.cur.files['ifile']
         if not isfile(ifile):
             return
         # Preparation
@@ -190,7 +191,7 @@ class UDPServer(LogableThread):
         job = Job(*params)
         self.queue.put(job)
         kill(job.id, 19)
-        self.inform('add', (job.params['files']['ifile'], job.id))
+        self.inform('add', job)
 
     # Possibility to share work
     def mFree(self, params, peer):
