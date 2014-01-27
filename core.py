@@ -3,7 +3,7 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
-from os import kill, killpg, getpgid
+from os import kill, killpg, getpgid, urandom
 from os.path import isfile, isdir, dirname
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from subprocess import Popen
@@ -116,6 +116,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         host = shared.settings['host']
         self.cur = Job()
         self.queue = shared.queue
+        self.tmp = shared.settings['tmp']
         # Current running job, not nessesary self.cur
         self.curproc = processor.cur
         self.pgid = processor.pgid
@@ -142,11 +143,15 @@ class RemoteReporter(LogableThread, FileTransfer):
             sjob = loads(self.tcp.recv(4096).decode('utf-8'))
         except timeout:
             pass
-        self.cur = Job(*sjob)
+        # job contains filepaths on remote machine, but self.cur on local
+        job = Job(*sjob)
+        self.cur = Job(job.type, 0, params=job.params)
         # Receiving nessesary files
-        for jfile in self.cur.files.values():
-            self.tcp.send(dumps(['G', jfile]).encode('utf-8'))
-            self.recvfile(jfile)
+        for jfile in job.files.keys():
+            self.tcp.send(dumps(['G', job.files[jfile]]).encode('utf-8'))
+            # Creating new random name
+            self.cur.files[jfile] = self.tmp + '/' + urandom(5).encode('hex')
+            self.recvfile(self.cur.files[jfile])
         # Putting job to queue
         self.queue.put(self.cur)
         # While job still in queue receiver must wait
@@ -181,9 +186,9 @@ class RemoteReporter(LogableThread, FileTransfer):
                 else:
                     sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion sending results back
-        for jfile in self.cur.files.values():
-            self.tcp.send(dumps(['T', jfile]).encode('utf-8'))
-            self.sendfile(jfile)
+        for jfile in self.cur.files.keys():
+            self.tcp.send(dumps(['T', job.files[jfile]]).encode('utf-8'))
+            self.sendfile(self.cur.files[jfile])
         # Closing connection
         self.tcp.send(dumps(['D', jfile]).encode('utf-8'))
         self.tcp.close()
