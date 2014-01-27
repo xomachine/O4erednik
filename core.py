@@ -7,6 +7,8 @@ from os import kill, killpg, getpgid
 from os.path import isfile, isdir, dirname
 from socket import socket, SOL_SOCKET, SO_REUSEADDR
 from subprocess import Popen, CREATE_NEW_PROCESS_GROUP
+from time import sleep
+from shared import Resources
 
 
 class Job():
@@ -102,11 +104,12 @@ class RemoteReporter(LogableThread, FileTransfer):
             self.cur) else False
         self.pooler = lambda: True if self.cur is processor.cur else False
         # Socket creation
-        self.tcp = socket()
-        self.tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self.tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
-        self.tcp.bind((host, 50000))
-        self.tcp.listen(1)
+        tcp = socket()
+        tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
+        tcp.bind((host, 50000))
+        tcp.listen(1)
+        self.tcp, addr = tcp.accept()
         self.setsocket(self.tcp)  # Setting socket for file transfer
 
     def run(self):
@@ -127,34 +130,39 @@ class RemoteReceiver(LogableThread, FileTransfer):
         # Socket creation
         self.tcp = socket()
         self.tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
+        sleep(1)  # OPTIMIZE: Find optimal sleep before connection
         try:
             self.tcp.connect((peer, 50000))
         except:
             error('Unable to connect remote worker' + peer)
-            self._alive = False
+            self.stop()
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
-        self.inform('shared', self.job)
+        self.inform('shared', (self.job.params['ifile'], self.peer))
 
     def run(self):
         if self._alive is False:
             return
-        pass
+
+    def stop(self):
+        self._alive = False
 
 
 class UDPServer(LogableThread):
 
-    def __init__(self, shared):
+    def __init__(self):
         super(UDPServer, self).__init__()
         self.name = 'UDPServer'
         # Binding shared objects
-        self.shared = shared
-        self.queue = shared.queue
-        self.udp = shared.udpsocket
-        self.inform = shared.backend.signal
+        self.shared = Resources()
+        self.queue = self.shared.queue
+        self.udp = self.shared.udpsocket
+        self.inform = self.shared.backend.signal
         # Creating queue processor
         self.processor = Processor(self.shared)
+        # Creating list of receivers
+        self.receivers = dict()
         # Fill message-action dictonary
         self.fill_actions()
 
@@ -164,6 +172,7 @@ class UDPServer(LogableThread):
             'A': self.mAdd,
             'L': self.mLFF,
             'K': self.mKill,
+            'S': self.mShare,
             }
 
     def run(self):
@@ -185,12 +194,18 @@ class UDPServer(LogableThread):
 
     # Possibility to share work
     def mFree(self, params, peer):
-        if self.queue.fill.isSet() and not self.processor.cur is None:
-            self.sendto(
-                dumps(['S', None]),
-                (peer, 50000)
-                )
-            RemoteReceiver(self.shared, peer).start()
+        if (
+            self.processor.cur is None or
+            peer in self.receivers or
+            not self.queue.fill.isSet()
+            ):
+            return
+        self.sendto(
+            dumps(['S', None]),
+            (peer, 50000)
+            )
+        self.receivers[peer] = RemoteReceiver(self.shared, peer)
+        self.receivers[peer].start()
 
     # Search for possibility to share work
     def mLFF(self, params, peer):
@@ -201,4 +216,12 @@ class UDPServer(LogableThread):
                 )
 
     def mKill(self, params, peer):
-        killpg(self.processor.pgid, 9)  # Kill current task with SIGKILL
+        if params == 'current':
+            killpg(self.processor.pgid, 9)  # Kill current task with SIGKILL
+        elif params is int:
+            self.queue.remove(params)
+        elif params in self.receivers:
+            self.receivers[params].stop()
+
+    def mShare(self, params, peer):
+        RemoteReporter(self.shared, peer)
