@@ -44,6 +44,7 @@ class FileTransfer():
     def sendfile(self, path, blocksize=2048, sbs=False, alive=lambda: True,
         sleeptime=10):
         if not isfile(path):
+            self._tcp.send(pack('c?', self.FT_ERROR, sbs))
             return
         # Request for sending
         self._tcp.send(pack('c?', self.FT_HANDSHAKE, sbs))
@@ -71,7 +72,7 @@ class FileTransfer():
                     break
             self._tcp.send(pack(self.FT_STOP, 0))
 
-    def recvfile(self, path, alive=lambda: True):
+    def recvfile(self, path, alive=True):
         req, sbs = unpack(self.FT_REQFMT, self._tcp.recv(self.FT_HSIZE))
         if req != self.FT_SENDREQ:
             return req
