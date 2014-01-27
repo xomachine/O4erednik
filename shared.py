@@ -5,7 +5,8 @@ from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
 from socket import SOL_SOCKET, SO_REUSEADDR
 from json import dump, load
 from os.path import realpath, isfile, dirname
-from os import sysconf
+from os import sysconf, environ, makedirs
+from logging import basicConfig, DEBUG
 try:
     from gui import Backend
 except ImportError:
@@ -69,11 +70,23 @@ class Resources():
         super(Resources, self).__init__()
         # Programm position
         self.path = dirname(realpath(__file__))
+        # Logging
+        basicConfig(
+            filename=self.path + '/queuer.log',
+            level=DEBUG,
+            format='[%(asctime)s] %(threadName)s: %(levelname)s, %(message)s',
+            datefmt='%d.%m.%y %H:%M:%S'
+            )
         # Settings
         self.settings = dict()
         self.default()
         self.load()
         self.save()  # Just renew/create config
+        # Environment
+        environ['g03root'] = dirname(dirname(self.settings['g03exe']))
+        environ['GAUSS_EXEDIR'] = dirname(self.settings['g03exe'])
+        environ['GAUSS_SCRDIR'] = self.settings['tmp']
+        makedirs(self.settings['tmp'], exist_ok=True)
         # Socket
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -90,6 +103,7 @@ class Resources():
         self.settings['host'] = gethostname()
         self.settings['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
         self.settings['g03exe'] = ''
+        self.settings['tmp'] = '/tmp/queuer'
         # To be continued...
 
     def save(self):
