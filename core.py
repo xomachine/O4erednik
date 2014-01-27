@@ -6,7 +6,7 @@ from logging import debug, error
 from os import kill, killpg, getpgid
 from os.path import isfile, isdir, dirname
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
-from subprocess import Popen, CREATE_NEW_PROCESS_GROUP
+from subprocess import Popen
 from time import sleep
 from shared import Resources
 
@@ -47,14 +47,14 @@ class Processor(LogableThread):
                 # Send Free signal when queue is empty
                 self.udp.sendto(
                     dumps(['F', None]).encode('utf-8'),
-                    ('<broadcast>', 50000)
+                    ('', 50000)
                     )
                 self.inform('empty')
             self.cur = self.queue.get()
             if self.queue.fill.isSet():  # Look For Free if queue still fill
                 self.udp.sendto(
                     dumps(['L', None]).encode('utf-8'),
-                    ('<broadcast>', 50000)
+                    ('', 50000)
                     )
             if self.cur.type in self.workers:
                 self.inform('start', self.cur.id)
@@ -101,7 +101,7 @@ class Processor(LogableThread):
         proc = Popen(
             [self.g03exe, ifile],
             cwd=dirname(ifile),
-            creationflags=CREATE_NEW_PROCESS_GROUP
+            shell=True
             )
         self.pgid = getpgid(proc.pid)
         proc.wait()
@@ -285,10 +285,6 @@ class UDPServer(LogableThread):
             }
 
     def run(self):
-        self.udp.sendto(
-            dumps(['F', None]).encode('utf-8'),
-            ('<broadcast>', 50000)
-            )
         self.processor.start()
         while self._alive:
             data, peer = self.udp.recvfrom(1024)
@@ -305,7 +301,7 @@ class UDPServer(LogableThread):
         if self.processor.cur:  # Look For Free if processor is already busy
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
-                ('<broadcast>', 50000)
+                ('', 50000)
                 )
         self.queue.put(job)
         kill(job.id, 19)
@@ -327,7 +323,7 @@ class UDPServer(LogableThread):
         if self.queue.fill.isSet():  # Look For Free if queue still fill
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
-                ('<broadcast>', 50000)
+                ('', 50000)
                 )
         self.receivers[peer].start()
 
