@@ -5,7 +5,7 @@ from json import loads, dumps
 from logging import debug, error
 from os import kill, killpg, getpgid
 from os.path import isfile, isdir, dirname
-from socket import socket, SOL_SOCKET, SO_REUSEADDR
+from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from subprocess import Popen, CREATE_NEW_PROCESS_GROUP
 from time import sleep
 from shared import Resources
@@ -49,6 +49,10 @@ class Processor(LogableThread):
                 self.inform('start', self.cur.id)
                 self.workers[self.cur.type]()
                 self.inform('done', self.cur.id)
+                try:
+                    kill(self.cur.id, 9)  # SIGKILL for fake exe
+                except:
+                    pass
             self.cur = None
 
 # Workers
@@ -145,6 +149,37 @@ class RemoteReceiver(LogableThread, FileTransfer):
     def run(self):
         if self._alive is False:
             return
+        # Sending job object as it is
+        jpack = dumps([
+            self.job.type,
+            self.job.id,
+            self.job.files,
+            self.job.params
+            ])
+        self.tcp.send(jpack.encode('utf-8'))
+        # Waiting for response from remote host
+        while self._alive:
+            try:
+                req, param = loads(self.tcp.recv(1024).decode('utf-8'))
+            except timeout:
+                req = 'E'
+            if req == 'G':  # Get file
+                self.sendfile(param)
+            elif req == 'T':  # Transfer file
+                self.recvfile(param)
+            elif req == 'S':  # Start streaming
+                self.recvfile(param, self._alive)
+            elif req == 'D':  # All Done, job completed
+                self.inform('done', self.job.id)
+                self.stop()
+            else:
+                self.stop()
+                self.queue.put(self.job)
+                self.inform('error', self.job.id)
+                if req != 'E':  # Unexpected response
+                    error('Unexpected response:' + req)
+        if self._alive is False:  # Sharing process end
+            self.tcp.close()
 
     def stop(self):
         self._alive = False
