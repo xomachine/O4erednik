@@ -7,10 +7,10 @@ from struct import pack, unpack
 from time import sleep
 
 
-class LoggableThread(Thread):
+class LogableThread(Thread):
 
     def __init__(self):
-        super(LoggableThread, self).__init__()
+        super(LogableThread, self).__init__()
         self.daemon = True
         self._alive = True
         self._real_run = self.run
