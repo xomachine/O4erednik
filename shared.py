@@ -70,6 +70,12 @@ class Queue():
     def is_contain(self, obj):
         return True if obj in self._queue else False
 
+    def remove(self, index):
+        if index + 1 > self.size:
+            return
+        else:
+            self._queue.pop(index)
+
 
 class Resources():
 
