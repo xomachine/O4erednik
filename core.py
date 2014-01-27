@@ -104,9 +104,9 @@ class RemoteReporter(LogableThread, FileTransfer):
         host = shared.settings['host']
         self.cur = Job()
         self.queue = shared.queue
-        self.checker = lambda: True if self.queue.is_contain(
-            self.cur) else False
-        self.pooler = lambda: True if self.cur is processor.cur else False
+        # Current running job, not nessesary self.cur
+        self.curproc = processor.cur
+        self.pgid = processor.pgid
         # Socket creation
         tcp = socket()
         tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -117,11 +117,64 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.setsocket(self.tcp)  # Setting socket for file transfer
         tcp.close()
 
-    def run(self):
-        pass
+    def stop(self):
+        self.tcp.close()
+        if self.cur is self.curproc:
+            killpg(self.pgid, 9)
+        elif self.queue.is_contain(self.cur):
+            self.queue.remove(self.cur)
 
-    def check(self):
-        return self.checker() or self.pooler()
+    def run(self):
+        # Receiving job class as it is
+        try:
+            sjob = loads(self.tcp.recv(4096).decode('utf-8'))
+        except timeout:
+            pass
+        self.cur = Job(*sjob)
+        # Receiving nessesary files
+        for jfile in self.cur.files.values():
+            self.tcp.send(dumps(['G', jfile]).encode('utf-8'))
+            self.recvfile(jfile)
+        # Putting job to queue
+        self.queue.put(self.cur)
+        # While job still in queue receiver must wait
+        while self.queue.is_contain(self.cur):
+            self.tcp.send(dumps(['W', 10]).encode('utf-8'))
+            try:
+                self.tcp.recv(1)
+            except:
+                self.stop()
+                return
+            else:
+                sleep(10)  # OPTIMIZE: Find optimal sleep interval
+        # Job leaved queue, lets search it in processor
+        # If output file has defined, stream it while job is in process
+        #FIXME lambdas behaviour is undefined here
+        if 'ofile' in self.cur.files:
+            if self.cur is self.curproc:
+                self.sendfile(
+                    self.cur.files['ofile'],
+                    sbs=True,
+                    alive=lambda: True if self.cur is self.curproc else False
+                    )
+        # Else just wait until job will be done
+        else:
+            while self.cur is self.curproc:
+                self.tcp.send(dumps(['W', 10]).encode('utf-8'))
+                try:
+                    self.tcp.recv(1)
+                except:
+                    self.stop()
+                    return
+                else:
+                    sleep(10)  # OPTIMIZE: Find optimal sleep interval
+        # After job completion sending results back
+        for jfile in self.cur.files.values():
+            self.tcp.send(dumps(['T', jfile]).encode('utf-8'))
+            self.sendfile(jfile)
+        # Closing connection
+        self.tcp.send(dumps(['D', jfile]).encode('utf-8'))
+        self.tcp.close()
 
 
 class RemoteReceiver(LogableThread, FileTransfer):
@@ -167,6 +220,9 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.sendfile(param)
             elif req == 'T':  # Transfer file
                 self.recvfile(param)
+            elif req == 'W':  # Wait some seconds and req again
+                self.tcp.send(b'O')
+                sleep(param)
             elif req == 'S':  # Start streaming
                 self.recvfile(param, self._alive)
             elif req == 'D':  # All Done, job completed
