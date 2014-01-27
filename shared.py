@@ -3,7 +3,7 @@
 from threading import Lock, Event
 from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
 from socket import SOL_SOCKET, SO_REUSEADDR
-from json import dump, load, dumps
+from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf
 try:
@@ -13,14 +13,9 @@ except ImportError:
 
         def __init__(self, udp):
             super(GUIBackend, self).__init__()
-            self.sendto = udp.sendto
 
         def signal(self, *signal):
-            if signal[0] == 'empty':
-                self.sendto(
-                    dumps(['F', None]).encode('utf-8'),
-                    ('<broadcast>', 50000)
-                    )
+            return
 
 else:
     class GUIBackend(Backend):
@@ -28,15 +23,6 @@ else:
         def __init__(self, udp):
             super(GUIBackend, self).__init__()
             self.sendto = udp.sendto
-            self.sEmpty_old = self.sEmpty
-            self.sEmpty = self.sEmpty_new
-
-        def sEmpty_new(self, data):
-            self.sendto(
-                dumps(['F', None]).encode('utf-8'),
-                ('<broadcast>', 50000)
-                )
-            self.sEmpty_old(data)
 
 
 class Queue():
