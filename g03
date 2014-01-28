@@ -2,7 +2,7 @@
 PID=$$
 L=$(uname -n)
 if [ -z $* ]; then exit 1; fi
-echo -e "[\"A\", [\"g03\", $PID, {\"ifile\": \"$*\"}, {}]]" >/dev/udp/$L/50000
+echo -e "[\"A\", [\"g03\", $PID, {\"ifile\": \"$*\"}, {}]]" >/dev/udp/127.0.0.1/50000
 exec sleep 10s
 
 
