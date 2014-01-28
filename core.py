@@ -62,7 +62,7 @@ class Processor(LogableThread):
                 self.inform('done', self.cur.id)
                 if self.cur.id > 0:
                     try:
-                        kill(self.job.id, 9)
+                        kill(self.cur.id, 9)
                     except:
                         pass
             self.cur = None
@@ -80,6 +80,7 @@ class Processor(LogableThread):
         # Set number of processors by default
         with open(ifile, 'r') as f:
             lines = f.readlines()
+            chknum = 0
             for buf in lines:
                 if buf.startswith('%lindaworkers'):
                     buf = "%lindaworkers=\n"
@@ -90,11 +91,16 @@ class Processor(LogableThread):
                     # as annessesery
                     wlines[0] = ""
                 elif buf.startswith('%chk'):
-                    # If dir to chk file not exist or %chk refers to directory,
-                    # save chk to same place as input
-                    if isdir(buf[5:-1]) or not isdir(dirname(buf[5:-1])):
-                        buf = "%chk=" + ifile[:-3] + "chk\n"
-                    self.cur.files['chk'] = buf[5:-1]
+                    # If chk file not registred, nessesary to do it,
+                    if not 'chkfile' + str(chknum) in self.cur.files:
+                        self.cur.files['chkfile' + str(chknum)] = buf[5:-1]
+                    cur = self.cur.files['chkfile' + str(chknum)]
+                    # Check registred chk file existence, if it's fails
+                    # chk file will be placed in directory with input file
+                    if isdir(cur) or not isdir(dirname(cur)):
+                        cur = ifile[:-3] + "chk"
+                    buf = "%chk=" + cur + "\n"
+                    chknum += 1
                 wlines.append(buf)
         with open(ifile, 'w') as f:
             for buf in wlines:
