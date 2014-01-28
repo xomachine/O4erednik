@@ -3,7 +3,7 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
-from os import kill, killpg, getpgid, urandom
+from os import kill, killpg, urandom, setsid
 from os.path import isfile, isdir, dirname
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from subprocess import Popen
@@ -60,7 +60,7 @@ class Processor(LogableThread):
                 self.inform('start', self.cur.id)
                 self.workers[self.cur.type]()
                 self.inform('done', self.cur.id)
-                if self.job.id > 0:
+                if self.cur.id > 0:
                     try:
                         kill(self.job.id, 9)
                     except:
@@ -74,6 +74,7 @@ class Processor(LogableThread):
         ifile = self.cur.files['ifile']
         if not isfile(ifile):
             return
+        self.cur.files['ofile'] = ifile[:-3] + "log"
         # Preparation
         wlines = ["%nprocshared=" + str(self.nproc) + "\n"]
         # Set number of processors by default
@@ -93,6 +94,7 @@ class Processor(LogableThread):
                     # save chk to same place as input
                     if isdir(buf[5:-1]) or not isdir(dirname(buf[5:-1])):
                         buf = "%chk=" + ifile[:-3] + "chk\n"
+                    self.cur.files['chk'] = buf[5:-1]
                 wlines.append(buf)
         with open(ifile, 'w') as f:
             for buf in wlines:
@@ -101,9 +103,9 @@ class Processor(LogableThread):
         proc = Popen(
             [self.g03exe, ifile],
             cwd=dirname(ifile),
-            shell=True
+            preexec_fn=setsid
             )
-        self.pgid = getpgid(proc.pid)
+        self.pid = proc.pid
         proc.wait()
 
 
@@ -119,7 +121,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.tmp = shared.settings['tmp']
         # Current running job, not nessesary self.cur
         self.curproc = processor.cur
-        self.pgid = processor.pgid
+        self.pid = processor.pid
         # Socket creation
         tcp = socket()
         tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -133,11 +135,12 @@ class RemoteReporter(LogableThread, FileTransfer):
     def stop(self):
         self.tcp.close()
         if self.cur is self.curproc:
-            killpg(self.pgid, 9)
+            killpg(self.pid, 9)
         elif self.queue.is_contain(self.cur):
             self.queue.remove(self.cur)
 
     def run(self):
+        #TODO: Придумать как быть с chk и log файлами, не заявленными в files
         # Receiving job class as it is
         try:
             sjob = loads(self.tcp.recv(4096).decode('utf-8'))
@@ -293,10 +296,14 @@ class UDPServer(LogableThread):
         self.processor.start()
         while self._alive:
             data, peer = self.udp.recvfrom(1024)
-            debug(data)
-            mtype, params = loads(data.decode('utf-8'))
+            debug((data, peer))
+            try:
+                mtype, params = loads(data.decode('utf-8'))
+            except ValueError:
+                debug('It is not a proper request')
+                continue
             if mtype in self.actions:
-                self.actions[mtype](params, peer)
+                self.actions[mtype](params, peer[0])
 
 # Actions
 
@@ -342,7 +349,7 @@ class UDPServer(LogableThread):
 
     def mKill(self, params, peer):
         if params == 'current':
-            killpg(self.processor.pgid, 9)  # Kill current task with SIGKILL
+            killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
         elif params is int:
             self.queue.remove(params)
         elif params in self.receivers:
