@@ -48,7 +48,7 @@ class Queue():
             else:
                 return None
         with self._lock:
-            obj = self._queue.popleft()
+            obj = self._queue.pop(0)
             self.size -= 1
             if self.size == 0:
                 self.fill.clear()
