@@ -4,7 +4,7 @@ from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
 from os import kill, killpg, urandom, setsid
-from os.path import isfile, isdir, dirname
+from os.path import isfile, isdir, dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from subprocess import Popen
 from time import sleep
@@ -140,24 +140,36 @@ class RemoteReporter(LogableThread, FileTransfer):
             self.queue.remove(self.cur)
 
     def run(self):
-        #TODO: Придумать как быть с chk и log файлами, не заявленными в files
-        # Receiving job class as it is
+        # Receive job class as it is
         try:
             sjob = loads(self.tcp.recv(4096).decode('utf-8'))
         except timeout:
             pass
-        # job contains filepaths on remote machine, but self.cur on local
-        job = Job(*sjob)
-        self.cur = Job(job.type, 0, params=job.params)
-        # Receiving nessesary files
-        for jfile in job.files.keys():
-            self.tcp.send(dumps(['G', job.files[jfile]]).encode('utf-8'))
-            # Creating new random name
-            self.cur.files[jfile] = self.tmp + '/' + urandom(5).encode('hex')
-            self.recvfile(self.cur.files[jfile])
-        # Putting job to queue
+        # Detach remote paths from job
+        self.cur = Job(*sjob)
+        rfiles = self.cur.files
+        self.cur.files = dict()
+        # Receive nessesary files and attach their with local paths to job
+        reals, fakes = [], []
+        for name, rpath in rfiles.items():
+            rdir = dirname(rpath)  # Real path on remote host
+            fname = basename(rpath)  # File name will not be changed
+            if not rdir in reals:
+                # Create new random fake path on local host and binding
+                # with real
+                reals.append(rdir)
+                fakes.append(urandom(3).encode('hex'))
+            # Generate path to file in local computer
+            lpath = self.tmp + '/' + fakes[reals.index(rdir)] + '/' + fname
+            # Request file from remote host by its real path
+            self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
+            # Receive file to local path
+            self.recvfile(lpath)
+            # Attach local path to job
+            self.cur.files[name] = lpath
+        # Put job into the queue
         self.queue.put(self.cur)
-        # While job still in queue receiver must wait
+        # While job still in queue, receiver must wait
         while self.queue.is_contain(self.cur):
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
             try:
@@ -172,6 +184,17 @@ class RemoteReporter(LogableThread, FileTransfer):
         #FIXME lambdas behaviour is undefined here
         if 'ofile' in self.cur.files:
             if self.cur is self.curproc:
+            # Remove from local path self.tmp, and split it to fake dir and name
+                splited = dirname(
+                    self.cur.files['ofile']
+                    )[len(self.tmp):].split('/', 2)
+                # Translate fake dir to remote real dir and
+                # request sending log step by step to remote real path
+                self.tcp.send(dumps([
+                    'S',
+                    reals[fakes.index(splited[1])] + '/' + splited[2]
+                    ]).encode('utf-8'))
+                # Send log
                 self.sendfile(
                     self.cur.files['ofile'],
                     sbs=True,
@@ -189,11 +212,20 @@ class RemoteReporter(LogableThread, FileTransfer):
                 else:
                     sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion sending results back
-        for jfile in self.cur.files.keys():
-            self.tcp.send(dumps(['T', job.files[jfile]]).encode('utf-8'))
-            self.sendfile(self.cur.files[jfile])
+        for name, lpath in self.cur.files.keys():
+            # Split local path to fake dir and filename
+            splited = dirname(
+                    lpath
+                    )[len(self.tmp):].split('/', 2)
+            # Translate fake dir to remote real dir,
+            # request and send file
+            self.tcp.send(dumps([
+                'T',
+                reals[fakes.index(splited[1])] + '/' + splited[2]
+                ]).encode('utf-8'))
+            self.sendfile(lpath)
         # Closing connection
-        self.tcp.send(dumps(['D', jfile]).encode('utf-8'))
+        self.tcp.send(dumps(['D', None]).encode('utf-8'))
         self.tcp.close()
 
 
@@ -223,6 +255,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         if self._alive is False:
             return
         # Sending job object as it is
+        #TODO: Handle with custom chks for gaussian
         jpack = dumps([
             self.job.type,
             0,  # Id of remote job must be 0 to avoid spontanous process kills
