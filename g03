@@ -1,8 +1,15 @@
 #!/bin/bash
 PID=$$
-L=$(uname -n)
-if [ -z $* ]; then exit 1; fi
-echo -e "[\"A\", [\"g03\", $PID, {\"ifile\": \"$*\"}, {}]]" >/dev/udp/127.0.0.1/50000
+# L=$(uname -n)
+if ! [ -z $1 ]; then files="\"ifile\": \"$1\""; else exit 1; fi
+if ! [ -z $2 ]; then files="$files, \"ofile\": \"$2\""; fi
+n=0
+for i in $(sed -n 's/^\%chk=\(.*\)$/\1/gp' $1)
+do
+    files="$files, \"chkfile$n\": \"$i\""
+    n=$(($n+1))
+done
+echo -e "[\"A\", [\"g03\", $PID, {$files }, {}]]" >/dev/udp/127.0.0.1/50000
 exec sleep 10s
 
 
