@@ -6,4 +6,6 @@ if __name__ == '__main__':
     # Starting app
     mainsrv = UDPServer()
     mainsrv.start()
+    #TODO: Separate GUI from UDPServer
+    mainsrv.shared.backend.run()
     mainsrv.join()
