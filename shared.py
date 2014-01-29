@@ -6,16 +6,22 @@ from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, environ, makedirs
-from logging import basicConfig, DEBUG
+from logging import basicConfig, DEBUG, exception
 try:
     from gui import Backend
 except ImportError:
+    exception('Import error')
+# Dummy class
+
     class GUIBackend():
 
         def __init__(self, udp):
             super(GUIBackend, self).__init__()
 
         def signal(self, *signal):
+            return
+
+        def run(self):
             return
 
 else:
