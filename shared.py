@@ -6,30 +6,7 @@ from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, environ, makedirs
-from logging import basicConfig, DEBUG, exception
-try:
-    from gui import Backend
-except ImportError:
-    exception('Import error')
-# Dummy class
-
-    class GUIBackend():
-
-        def __init__(self, udp):
-            super(GUIBackend, self).__init__()
-
-        def signal(self, *signal):
-            return
-
-        def run(self):
-            return
-
-else:
-    class GUIBackend(Backend):
-
-        def __init__(self, udp):
-            super(GUIBackend, self).__init__()
-            self.sendto = udp.sendto
+from logging import basicConfig, DEBUG
 
 
 class Queue():
@@ -98,8 +75,6 @@ class Resources():
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         self.udpsocket.bind((self.settings['host'], 50000))
-        # GUIBackend
-        self.backend = GUIBackend(self.udpsocket)
         # Queue
         self.queue = Queue()
         # If programm was frozen...
@@ -130,3 +105,7 @@ class Resources():
     def unfreeze(self):
         if not isfile(self.path + '/frozen.dat'):
             return
+
+# Stub informer, will be replaced by gui informer
+    def inform(self, *signal):
+        return
