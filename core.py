@@ -8,7 +8,6 @@ from os.path import isfile, isdir, dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from subprocess import Popen
 from time import sleep
-from shared import Resources
 
 
 class Job():
@@ -29,7 +28,7 @@ class Processor(LogableThread):
         self.cur = None
         # Binding shared objects
         self.queue = shared.queue
-        self.inform = shared.backend.signal
+        self.inform = shared.inform
         self.udp = shared.udpsocket
         self.nproc = shared.settings['nproc']
         self.g03exe = shared.settings['g03exe']
@@ -242,7 +241,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         self.name = 'receiver-' + peer
         # Binding shared objects
         self.queue = shared.queue
-        self.inform = shared.backend.signal
+        self.inform = shared.inform
         # Socket creation
         self.tcp = socket()
         self.tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
@@ -307,14 +306,14 @@ class RemoteReceiver(LogableThread, FileTransfer):
 
 class UDPServer(LogableThread):
 
-    def __init__(self):
+    def __init__(self, shared):
         super(UDPServer, self).__init__()
         self.name = 'UDPServer'
         # Binding shared objects
-        self.shared = Resources()
-        self.queue = self.shared.queue
-        self.udp = self.shared.udpsocket
-        self.inform = self.shared.backend.signal
+        self.shared = shared
+        self.queue = shared.queue
+        self.udp = shared.udpsocket
+        self.inform = shared.inform
         # Creating queue processor
         self.processor = Processor(self.shared)
         # Creating list of receivers
