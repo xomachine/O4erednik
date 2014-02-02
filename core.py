@@ -56,9 +56,9 @@ class Processor(LogableThread):
                     ('', 50000)
                     )
             if self.cur.type in self.workers:
-                self.inform('start', self.cur.id)
+                self.inform('start')
                 self.workers[self.cur.type]()
-                self.inform('done', self.cur.id)
+                self.inform('done', 'current')
                 if self.cur.id > 0:
                     try:
                         kill(self.cur.id, 9)
@@ -239,6 +239,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
     def __init__(self, shared, peer):
         super(RemoteReceiver, self).__init__()
         self.name = 'receiver-' + peer
+        self.peer = peer
         # Binding shared objects
         self.queue = shared.queue
         self.inform = shared.inform
@@ -254,13 +255,12 @@ class RemoteReceiver(LogableThread, FileTransfer):
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
-        self.inform('shared', (self.job.id, self.peer))
+        self.inform('shared', self.peer)
 
     def run(self):
         if self._alive is False:
             return
         # Sending job object as it is
-        #TODO: Handle with custom chks for gaussian
         jpack = dumps([
             self.job.type,
             0,  # Id of remote job must be 0 to avoid spontanous process kills
@@ -289,12 +289,12 @@ class RemoteReceiver(LogableThread, FileTransfer):
                         kill(self.job.id, 9)
                     except:
                         pass
-                self.inform('done', self.job.id)
+                self.inform('done', self.peer)
                 self.stop()
             else:
                 self.stop()
                 self.queue.put(self.job)
-                self.inform('error', self.job.id)
+                self.inform('error', self.peer)
                 if req != 'E':  # Unexpected response
                     error('Unexpected response:' + req)
         if self._alive is False:  # Sharing process end
@@ -355,7 +355,7 @@ class UDPServer(LogableThread):
                 )
         self.queue.put(job)
         kill(job.id, 19)
-        self.inform('add', job)
+        self.inform('add', job.files['ifile'])
 
     # Possibility to share work
     def mFree(self, params, peer):
