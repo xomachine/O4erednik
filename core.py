@@ -392,6 +392,7 @@ class UDPServer(LogableThread):
             self.queue.remove(params)
         elif params in self.receivers:
             self.receivers[params].stop()
+        self.inform('done', str(params))
 
     def mShare(self, params, peer):
         RemoteReporter(self.shared, peer).start()

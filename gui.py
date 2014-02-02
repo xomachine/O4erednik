@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
-from PyQt4.QtGui import QCursor, QToolTip
+from PyQt4.QtGui import QCursor, QDialog
 from PyQt4.QtCore import QTextCodec, SIGNAL
 from os import _exit
 from os.path import basename
@@ -49,11 +49,22 @@ class RightMenu(QMenu):
     def __init__(self):
         super(RightMenu, self).__init__()
 
-        exitact = self.addAction(_icons['delete'], self.tr('Exit'))
-        exitact.triggered.connect(self.DoExit)
+        self.addAction(
+            _icons['remote'],
+            self.tr('Settings')
+            ).triggered.connect(self.DoSetup)
+
+        self.addAction(
+            _icons['delete'],
+            self.tr('Exit')
+            ).triggered.connect(self.DoExit)
 
     def DoExit(self):
         _exit(0)
+
+    def DoSetup(self):
+        #TODO: Settings
+        pass
 
 
 class TrayIcon(QSystemTrayIcon):
@@ -66,28 +77,24 @@ class TrayIcon(QSystemTrayIcon):
         self.lmenu = LeftMenu()
 
         self.setContextMenu(self.rmenu)
-        self.activated.connect(self.DoActivate)
+        self.activated.connect(
+            lambda x: self.lmenu.exec_(QCursor.pos())
+            if x == self.Trigger
+            else False
+            )
 
         # Connect signals
-        # self.connect(self, SIGNAL(), self.sigfunc)
-        self.connect(self, SIGNAL('add(QString, QString)'), self.sigAdd)
-        self.connect(self, SIGNAL('empty()'), self.sigEmpty)
-        self.connect(self, SIGNAL('start()'), self.sigStart)
-        self.connect(self, SIGNAL('done(QString)'), self.sigDone)
-        self.connect(self, SIGNAL('shared(QString)'), self.sigStart)
-        self.connect(self, SIGNAL('error(QString)'), self.sigError)
+        # self.connect(self, SIGNAL(), self.signalhandler)
+        self.connect(self, SIGNAL('add(QString, QString)'), self.sAdd)
+        self.connect(self, SIGNAL('empty()'), self.sEmpty)
+        self.connect(self, SIGNAL('start(QString)'), self.sStart)
+        self.connect(self, SIGNAL('done(QString, QString)'), self.sDone)
 
-    def DoActivate(self, reason):
-        if reason == self.Trigger:
-            self.lmenu.exec_(QCursor.pos())
+# Signal handlers
 
-# Signals
-
-    def sigAdd(self, name, tooltip):
+    def sAdd(self, name, tooltip):
         elem = self.lmenu.queue.addMenu(_icons['wait'], name)
         elem.setToolTip(tooltip)
-        elem.enterEvent = lambda x: QToolTip.showText(QCursor.pos(), name)
-        elem.leaveEvent = lambda x: QToolTip.hideText()
         act = elem.addAction(
             _icons['delete'],
             self.tr('Cancel')
@@ -95,31 +102,27 @@ class TrayIcon(QSystemTrayIcon):
         act.triggered.connect(
             lambda: self.backend.sendto(
                 dumps(
+                    #FIXME: Something wrong there
                     ['K', self.lmenu.queue.actions().index(elem.menuAction())]
                     ).encode('utf-8'),
                 ('127.0.0.1', 50000)
                 )
             )
 
-    def sigEmpty(self):
+    def sEmpty(self):
         self.setIcon(_icons['free'])
         self.showMessage(self.tr('Status'), self.tr('The computer is free!'))
 
-    def sigStart(self, target='current'):
+    def sStart(self, target='current'):
         self.setIcon(_icons['run'])
         fromqueue = self.lmenu.queue.actions()[0]
         self.lmenu.queue.removeAction(fromqueue)
         started = fromqueue.menu()
         if target != 'current':
             started.setTitle(target + ': ' + started.title())
-        started.clear()
         started.setIcon(_icons['run'])
         #TODO: Stream log file action
-        started.addAction(
-            _icons['delete'],
-            self.tr('Cancel')
-            #TODO: Removing from list after canceled
-            ).triggered.connect(
+        started.actions()[0].triggered.connect(
                 lambda: self.backend.sendto(
                     dumps(['K', target]).encode('utf-8'),
                     ('127.0.0.1', 50000)
@@ -134,40 +137,39 @@ class TrayIcon(QSystemTrayIcon):
                 )
         self.lmenu.now[target] = started.menuAction()
 
-    def sigDone(self, target):
-        if not target in self.lmenu.now:
-            return
-        act = self.lmenu.now[target]
-        self.lmenu.now.pop(target, act)
-        self.lmenu.working.removeAction(act)
-        menu = act.menu()
-        menu.clear()
-        #TODO: Open log file action
-        menu.addAction(_icons['delete'], self.tr('Delete')).triggered.connect(
-            lambda: self.lmenu.recent.removeAction(menu.menuAction())
-            )
-        self.lmenu.recent.addMenu(menu)
-
-    def sigError(self, target):
-        if not target in self.lmenu.now:
-            return
-        act = self.lmenu.now[target]
-        self.lmenu.now.pop(target, act)
-        self.lmenu.working.removeAction(act)
-        menu = act.menu()
-        menu.clear()
-        #TODO: Open log file action
-        menu.addAction(_icons['delete'], self.tr('Delete')).triggered.connect(
-            lambda: self.backend.sendto(
-                dumps(
-                    ['K', self.lmenu.queue.actions().index(menu.menuAction())]
-                    ).encode('utf-8'),
-                ('127.0.0.1', 50000)
+    def sDone(self, target, mode):
+        if target.isdigit():
+            self.lmenu.queue.removeAction(
+                self.lmenu.queue.actions()[int(target)]
                 )
-            )
-        self.lmenu.recent.addMenu(menu)
+        if not target in self.lmenu.now:
+            return
+        act = self.lmenu.now[target]
+        self.lmenu.now.pop(target, act)
+        self.lmenu.working.removeAction(act)
+        menu = act.menu()
+        menu.clear()
+        if mode == 'error':
+            self.sAdd(menu.title(), menu.toolTip())
+        else:
+            self.showMessage(
+                self.tr('Assignment completed'),
+                self.tr('The assignment') +
+                menu.title() + self.tr('is completed!')
+                )
+            #TODO: Open log file action
+            menu.addAction(
+                _icons['delete'],
+                self.tr('Delete')
+                ).triggered.connect(
+                    lambda: self.lmenu.recent.removeAction(menu.menuAction())
+                    )
+            self.lmenu.recent.addMenu(menu)
 
 
+###############################################################################
+# Backend
+###############################################################################
 class Backend():
 
     def __init__(self):
@@ -179,14 +181,13 @@ class Backend():
         self._tray = TrayIcon()
         self._tray.backend = self
         self._tray.setIcon(_icons['wait'])
-        #TODO: make signal system lighter
         self.signals = {
             'add': self.sAdd,
-            'shared': self.sLists,
-            'empty': self.sState,
-            'start': self.sState,
-            'done': self.sLists,
-            'error': self.sLists,
+            'shared': self.sStart,
+            'empty': lambda x: self._tray.emit(SIGNAL('empty()')),
+            'start': self.sStart,
+            'done': self.sDone,
+            'error': self.sDone,
             }
         debug('Backend initialized')
 
@@ -221,8 +222,8 @@ class Backend():
             filename
             )
 
-    def sLists(self, func, target):
-        self._tray.emit(SIGNAL(func + '(QString)'), target)
+    def sDone(self, func, target):
+        self._tray.emit(SIGNAL('done(QString, QString)'), target, func)
 
-    def sState(self, func):
-        self._tray.emit(SIGNAL(func + '()'))
+    def sStart(self, func, target='current'):
+        self._tray.emit(SIGNAL('start(QString)'), target)
