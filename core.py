@@ -3,10 +3,9 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
-from os import kill, killpg, urandom, setsid
-from os.path import isfile, isdir, dirname, basename
+from os import kill, killpg, urandom
+from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
-from subprocess import Popen
 from time import sleep
 
 
@@ -30,15 +29,7 @@ class Processor(LogableThread):
         self.queue = shared.queue
         self.inform = shared.inform
         self.udp = shared.udpsocket
-        self.nproc = shared.settings['nproc']
-        self.g03exe = shared.settings['g03exe']
-        # Fill workers
-        self.fill_workers()
-
-    def fill_workers(self):
-        self.workers = {
-            'g03': self.g03
-            }
+        self.workers = shared.modules
 
     def run(self):
         while self._alive:
@@ -57,7 +48,10 @@ class Processor(LogableThread):
                     )
             if self.cur.type in self.workers:
                 self.inform('start')
-                self.workers[self.cur.type]()
+                # Do job
+                process = self.workers[self.cur.type].do(self.cur)
+                self.pid = process.pid
+                process.wait()
                 self.inform('done', 'current')
                 if self.cur.id > 0:
                     try:
@@ -65,53 +59,6 @@ class Processor(LogableThread):
                     except:
                         pass
             self.cur = None
-
-# Workers
-
-    # Gaussian 03 worker
-    def g03(self):
-        ifile = self.cur.files['ifile']
-        if not isfile(ifile):
-            return
-        self.cur.files['ofile'] = ifile[:-3] + "log"
-        # Preparation
-        wlines = ["%nprocshared=" + str(self.nproc) + "\n"]
-        # Set number of processors by default
-        with open(ifile, 'r') as f:
-            lines = f.readlines()
-            chknum = 0
-            for buf in lines:
-                if buf.startswith('%lindaworkers'):
-                    buf = "%lindaworkers=\n"
-                    #TODO: linda support
-                elif buf.startswith('%nprocshared'):
-                    buf = '%nprocshared=' + str(self.nproc) + "\n"
-                    # Overwrite number of processors and remove default
-                    # as annessesery
-                    wlines[0] = ""
-                elif buf.startswith('%chk'):
-                    # If chk file not registred, nessesary to do it,
-                    if not 'chkfile' + str(chknum) in self.cur.files:
-                        self.cur.files['chkfile' + str(chknum)] = buf[5:-1]
-                    cur = self.cur.files['chkfile' + str(chknum)]
-                    # Check registred chk file existence, if it's fails
-                    # chk file will be placed in directory with input file
-                    if isdir(cur) or not isdir(dirname(cur)):
-                        cur = ifile[:-3] + "chk"
-                    buf = "%chk=" + cur + "\n"
-                    chknum += 1
-                wlines.append(buf)
-        with open(ifile, 'w') as f:
-            for buf in wlines:
-                f.write(buf)
-        # Execution
-        proc = Popen(
-            [self.g03exe, ifile],
-            cwd=dirname(ifile),
-            preexec_fn=setsid
-            )
-        self.pid = proc.pid
-        proc.wait()
 
 
 class RemoteReporter(LogableThread, FileTransfer):
@@ -255,7 +202,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
-        self.inform('shared', self.peer)
+        self.inform('start', self.peer)
 
     def run(self):
         if self._alive is False:
@@ -289,12 +236,12 @@ class RemoteReceiver(LogableThread, FileTransfer):
                         kill(self.job.id, 9)
                     except:
                         pass
-                self.inform('done', self.peer)
+                self.inform('done', self.peer, 'error')
                 self.stop()
             else:
                 self.stop()
                 self.queue.put(self.job)
-                self.inform('error', self.peer)
+                self.inform('done', self.peer)
                 if req != 'E':  # Unexpected response
                     error('Unexpected response:' + req)
         if self._alive is False:  # Sharing process end
@@ -348,14 +295,15 @@ class UDPServer(LogableThread):
     # Local addition to queue
     def mAdd(self, params, peer):
         job = Job(*params)
+        self.shared.modules[job.type].register(job)  # Register files for job
         if self.processor.cur:  # Look For Free if processor is already busy
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
                 ('', 50000)
                 )
+        self.inform('add', job.files['ifile'])
         self.queue.put(job)
         kill(job.id, 19)
-        self.inform('add', job.files['ifile'])
 
     # Possibility to share work
     def mFree(self, params, peer):
