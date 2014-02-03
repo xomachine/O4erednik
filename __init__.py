@@ -14,10 +14,7 @@ if __name__ == '__main__':
         warning('GUI cann\'t be imported! Running without it.')
         guibackend = None
     else:
-        guibackend = Backend(shared.settings)
-        # Allow GUI to send commands
-        guibackend.sendto = shared.udpsocket.sendto
-        # Allow GUI to be informed about changes in queue
+        guibackend = Backend(shared)
         shared.inform = guibackend.signal
     # Start app
     mainsrv = UDPServer(shared)

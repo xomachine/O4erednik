@@ -2,7 +2,6 @@
 from os.path import isdir, isfile, dirname
 from os import setsid, environ
 from subprocess import Popen
-name = 'g03'
 
 # Gaussian 03 worker
 
@@ -10,14 +9,14 @@ name = 'g03'
 class Module():
 
     def __init__(self, settings):
-        if not settings.has_section('G03'):
-            settings.add_section('G03')
-            settings['G03']['g03exe'] = ''
-            settings['G03']['g03vis'] = ''
-        self.g03set = settings['G03']
+        if not settings.has_section('g03'):
+            settings.add_section('g03')
+            settings['g03']['g03exe'] = ''
+            settings['g03']['g03vis'] = ''
+        self.g03set = settings['g03']
         self.nproc = settings['Main']['nproc']
-        environ['g03root'] = dirname(dirname(settings['G03']['g03exe']))
-        environ['GAUSS_EXEDIR'] = dirname(settings['G03']['g03exe'])
+        environ['g03root'] = dirname(dirname(settings['g03']['g03exe']))
+        environ['GAUSS_EXEDIR'] = dirname(settings['g03']['g03exe'])
         environ['GAUSS_SCRDIR'] = settings['Main']['tmp']
 
     def register(self, job):
