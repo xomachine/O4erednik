@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
-from PyQt4.QtGui import QCursor, QDialog
+from PyQt4.QtGui import QCursor
 from PyQt4.QtCore import QTextCodec, SIGNAL
 from os import _exit
 from os.path import basename
@@ -183,11 +183,9 @@ class Backend():
         self._tray.setIcon(_icons['wait'])
         self.signals = {
             'add': self.sAdd,
-            'shared': self.sStart,
             'empty': lambda x: self._tray.emit(SIGNAL('empty()')),
             'start': self.sStart,
             'done': self.sDone,
-            'error': self.sDone,
             }
         debug('Backend initialized')
 
