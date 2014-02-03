@@ -122,6 +122,7 @@ class TrayIcon(QSystemTrayIcon):
             started.setTitle(target + ': ' + started.title())
         started.setIcon(_icons['run'])
         #TODO: Stream log file action
+        started.actions()[0].triggered.disconnect()
         started.actions()[0].triggered.connect(
                 lambda: self.backend.sendto(
                     dumps(['K', target]).encode('utf-8'),
@@ -155,7 +156,7 @@ class TrayIcon(QSystemTrayIcon):
             self.showMessage(
                 self.tr('Assignment completed'),
                 self.tr('The assignment') +
-                menu.title() + self.tr('is completed!')
+                menu.title() + self.tr(' is completed!')
                 )
             #TODO: Open log file action
             menu.addAction(
@@ -185,6 +186,7 @@ class Backend():
             'add': self.sAdd,
             'empty': lambda x: self._tray.emit(SIGNAL('empty()')),
             'start': self.sStart,
+            'error': self.sDone,
             'done': self.sDone,
             }
         debug('Backend initialized')

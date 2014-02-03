@@ -236,12 +236,12 @@ class RemoteReceiver(LogableThread, FileTransfer):
                         kill(self.job.id, 9)
                     except:
                         pass
-                self.inform('done', self.peer, 'error')
+                self.inform('done', self.peer)
                 self.stop()
             else:
                 self.stop()
                 self.queue.put(self.job)
-                self.inform('done', self.peer)
+                self.inform('error', self.peer)
                 if req != 'E':  # Unexpected response
                     error('Unexpected response:' + req)
         if self._alive is False:  # Sharing process end
