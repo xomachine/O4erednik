@@ -102,7 +102,6 @@ class TrayIcon(QSystemTrayIcon):
         act.triggered.connect(
             lambda: self.backend.sendto(
                 dumps(
-                    #FIXME: Something wrong there
                     ['K', self.lmenu.queue.actions().index(elem.menuAction())]
                     ).encode('utf-8'),
                 ('127.0.0.1', 50000)
@@ -173,8 +172,9 @@ class TrayIcon(QSystemTrayIcon):
 ###############################################################################
 class Backend():
 
-    def __init__(self):
+    def __init__(self, settings):
         super(Backend, self).__init__()
+        self.settings = settings
 
         self._app = QApplication([])
         self.loadicons()
