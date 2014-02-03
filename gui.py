@@ -1,22 +1,25 @@
 # -*- coding: utf-8 -*-
 
 from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
-from PyQt4.QtGui import QCursor
+from PyQt4.QtGui import QCursor, QFileDialog
 from PyQt4.QtCore import QTextCodec, SIGNAL
 from os import _exit
-from os.path import basename
+from os.path import basename, dirname
 from logging import debug
 from json import dumps
 import icons
 
+#TODO: sendto and others via emit(SIGNAL)
 _icons = dict()
 
 
 class LeftMenu(QMenu):
 
-    def __init__(self):
+    def __init__(self, backend):
         super(LeftMenu, self).__init__()
         self.now = dict()
+        self.backend = backend
+        self.lastpath = '/'
         # Fill elements of menu
         self.addAction(
             _icons['add'],
@@ -41,7 +44,24 @@ class LeftMenu(QMenu):
             )
 
     def DoAdd(self):
-        pass
+        types = 'Select assignment type'
+        for sect in self.backend.shared.settings.sections():
+            if sect == 'Main' or sect == 'DEFAULT':
+                continue
+            types += ';;' + sect + '(*.*)'
+        filename, jtype = QFileDialog.getOpenFileNameAndFilter(
+            None,
+            self.tr('Open file'),
+            self.lastpath,
+            types,
+            'Select assignment type',
+            QFileDialog.DontUseNativeDialog
+            )
+        if filename:
+            self.lastpath = dirname(filename)
+            self.backend.sendto(
+                dumps(['A', [jtype[:-5], 0, {"ifile": filename}, {}]])
+                )
 
 
 class RightMenu(QMenu):
@@ -69,12 +89,12 @@ class RightMenu(QMenu):
 
 class TrayIcon(QSystemTrayIcon):
 
-    def __init__(self):
+    def __init__(self, backend):
         super(TrayIcon, self).__init__()
-
+        self.backend = backend
         # Create right and left click menus
         self.rmenu = RightMenu()
-        self.lmenu = LeftMenu()
+        self.lmenu = LeftMenu(backend)
 
         self.setContextMenu(self.rmenu)
         self.activated.connect(
@@ -103,8 +123,7 @@ class TrayIcon(QSystemTrayIcon):
             lambda: self.backend.sendto(
                 dumps(
                     ['K', self.lmenu.queue.actions().index(elem.menuAction())]
-                    ).encode('utf-8'),
-                ('127.0.0.1', 50000)
+                    )
                 )
             )
 
@@ -124,8 +143,7 @@ class TrayIcon(QSystemTrayIcon):
         started.actions()[0].triggered.disconnect()
         started.actions()[0].triggered.connect(
                 lambda: self.backend.sendto(
-                    dumps(['K', target]).encode('utf-8'),
-                    ('127.0.0.1', 50000)
+                    dumps(['K', target])
                     )
                 )
         if self.lmenu.working.isEmpty:
@@ -172,15 +190,18 @@ class TrayIcon(QSystemTrayIcon):
 ###############################################################################
 class Backend():
 
-    def __init__(self, settings):
+    def __init__(self, shared):
         super(Backend, self).__init__()
-        self.settings = settings
-
+        self.shared = shared
+        self.sendto = lambda x: shared.udpsocket.sendto(
+            x.encode('utf-8'),
+            (shared.mainset['host'], 50000)
+            )
         self._app = QApplication([])
+        self._app.setQuitOnLastWindowClosed(False)
         self.loadicons()
         QTextCodec.setCodecForTr(QTextCodec.codecForName("UTF-8"))
-        self._tray = TrayIcon()
-        self._tray.backend = self
+        self._tray = TrayIcon(self)
         self._tray.setIcon(_icons['wait'])
         self.signals = {
             'add': self.sAdd,
