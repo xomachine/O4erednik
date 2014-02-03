@@ -303,7 +303,8 @@ class UDPServer(LogableThread):
                 )
         self.inform('add', job.files['ifile'])
         self.queue.put(job)
-        kill(job.id, 19)
+        if job.id > 0:
+            kill(job.id, 19)
 
     # Possibility to share work
     def mFree(self, params, peer):
