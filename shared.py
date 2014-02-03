@@ -5,7 +5,7 @@ from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
 from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
 from json import dump, load
 from os.path import realpath, isfile, dirname
-from os import sysconf, environ, makedirs
+from os import sysconf, makedirs, listdir
 from logging import basicConfig, DEBUG
 
 
@@ -66,9 +66,6 @@ class Resources():
         self.load()
         self.save()  # Just renew/create config
         # Environment
-        environ['g03root'] = dirname(dirname(self.settings['g03exe']))
-        environ['GAUSS_EXEDIR'] = dirname(self.settings['g03exe'])
-        environ['GAUSS_SCRDIR'] = self.settings['tmp']
         makedirs(self.settings['tmp'], exist_ok=True)
         # Socket
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
@@ -77,13 +74,25 @@ class Resources():
         self.udpsocket.bind((self.settings['host'], 50000))
         # Queue
         self.queue = Queue()
+        # Modules
+        self.modules = dict()
+        self.loadmodules()
         # If programm was frozen...
         self.unfreeze()
+
+    def loadmodules(self):
+        for mname in listdir(dirname(__file__) + '/modules'):
+            if mname == '__init__.py' or mname[-3:] != '.py':
+                continue
+            print(mname)
+            module = __import__(
+                'modules.' + mname[:-3], locals(), globals(), ['Module'])
+            self.modules[mname[:-3]] = module.Module(self.settings)
 
     def default(self):
         self.settings['host'] = gethostname()
         self.settings['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
-        self.settings['g03exe'] = ''
+
         self.settings['tmp'] = '/tmp/queuer'
         # To be continued...
 
