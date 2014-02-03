@@ -3,7 +3,7 @@
 from threading import Lock, Event
 from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
 from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
-from json import dump, load
+from configparser import ConfigParser
 from os.path import realpath, isfile, dirname
 from os import sysconf, makedirs, listdir
 from logging import basicConfig, DEBUG
@@ -61,17 +61,17 @@ class Resources():
             datefmt='%d.%m.%y %H:%M:%S'
             )
         # Settings
-        self.settings = dict()
+        self.settings = ConfigParser()
         self.default()
         self.load()
-        self.save()  # Just renew/create config
+        self.mainset = self.settings['Main']
         # Environment
-        makedirs(self.settings['tmp'], exist_ok=True)
+        makedirs(self.mainset['tmp'], exist_ok=True)
         # Socket
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        self.udpsocket.bind((self.settings['host'], 50000))
+        self.udpsocket.bind((self.mainset['host'], 50000))
         # Queue
         self.queue = Queue()
         # Modules
@@ -79,32 +79,33 @@ class Resources():
         self.loadmodules()
         # If programm was frozen...
         self.unfreeze()
+        self.save()  # Just renew/create config
 
     def loadmodules(self):
         for mname in listdir(dirname(__file__) + '/modules'):
             if mname == '__init__.py' or mname[-3:] != '.py':
                 continue
-            print(mname)
             module = __import__(
                 'modules.' + mname[:-3], locals(), globals(), ['Module'])
             self.modules[mname[:-3]] = module.Module(self.settings)
 
     def default(self):
-        self.settings['host'] = gethostname()
-        self.settings['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
-
-        self.settings['tmp'] = '/tmp/queuer'
+        if not self.settings.has_section('Main'):
+            self.settings.add_section('Main')
+        ms = self.settings['Main']
+        ms['host'] = gethostname()
+        ms['nproc'] = str(sysconf('SC_NPROCESSORS_ONLN'))
+        ms['tmp'] = '/tmp/queuer'
         # To be continued...
 
     def save(self):
-        with open(self.path + '/config.jsn', 'w') as f:
-            dump(self.settings, f, indent=0)
+        with open(self.path + '/config.ini', 'w') as f:
+            self.settings.write(f)
 
     def load(self):
-        if not isfile(self.path + '/config.jsn'):
+        if not isfile(self.path + '/config.ini'):
             return
-        with open(self.path + '/config.jsn', 'r') as f:
-            self.settings.update(load(f))
+        self.settings.read(self.path + '/config.ini')
 
 # Used to freeze shared resources before restart programm
     def freeze(self):

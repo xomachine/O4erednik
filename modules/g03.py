@@ -10,12 +10,15 @@ name = 'g03'
 class Module():
 
     def __init__(self, settings):
-        if not 'g03exe' in settings:
-            settings['g03exe'] = ''
-        environ['g03root'] = dirname(dirname(settings['g03exe']))
-        environ['GAUSS_EXEDIR'] = dirname(settings['g03exe'])
-        environ['GAUSS_SCRDIR'] = settings['tmp']
-        self.settings = settings
+        if not settings.has_section('G03'):
+            settings.add_section('G03')
+            settings['G03']['g03exe'] = ''
+            settings['G03']['g03vis'] = ''
+        self.g03set = settings['G03']
+        self.nproc = settings['Main']['nproc']
+        environ['g03root'] = dirname(dirname(settings['G03']['g03exe']))
+        environ['GAUSS_EXEDIR'] = dirname(settings['G03']['g03exe'])
+        environ['GAUSS_SCRDIR'] = settings['Main']['tmp']
 
     def register(self, job):
         ifile = job.files['ifile']
@@ -38,7 +41,7 @@ class Module():
     def do(self, job):
         ifile = job.files['ifile']
         # Preparation
-        wlines = ["%nprocshared=" + str(self.settings['nproc']) + "\n"]
+        wlines = ["%nprocshared=" + self.nproc + "\n"]
         # Set number of processors by default
         with open(ifile, 'r') as f:
             lines = f.readlines()
@@ -48,7 +51,7 @@ class Module():
                     buf = "%lindaworkers=\n"
                     #TODO: linda support
                 elif buf.startswith('%nprocshared'):
-                    buf = '%nprocshared=' + str(self.settings['nproc']) + "\n"
+                    buf = '%nprocshared=' + self.nproc + "\n"
                     # Overwrite number of processors and remove default
                     # as annessesery
                     wlines[0] = ""
@@ -61,7 +64,7 @@ class Module():
                 f.write(buf)
         # Execution
         proc = Popen(
-            [self.settings['g03exe'], ifile],
+            [self.g03set['g03exe'], ifile],
             cwd=dirname(ifile),
             preexec_fn=setsid
             )

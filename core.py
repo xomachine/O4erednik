@@ -67,10 +67,10 @@ class RemoteReporter(LogableThread, FileTransfer):
         super(RemoteReporter, self).__init__()
         self.name = 'reporter-' + peer
         # Binding shared objects
-        host = shared.settings['host']
+        host = shared.mainset['host']
         self.cur = Job()
         self.queue = shared.queue
-        self.tmp = shared.settings['tmp']
+        self.tmp = shared.mainset['tmp']
         # Current running job, not nessesary self.cur
         self.curproc = processor.cur
         self.pid = processor.pid
