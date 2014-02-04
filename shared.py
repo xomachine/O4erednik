@@ -66,7 +66,7 @@ class Resources():
         self.load()
         self.mainset = self.settings['Main']
         # Environment
-        makedirs(self.mainset['tmp'], exist_ok=True)
+        makedirs(self.mainset['Temporary directory'], exist_ok=True)
         # Socket
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -93,8 +93,8 @@ class Resources():
         if not 'Main' in self.settings:
             self.settings['Main'] = dict()
         ms = self.settings['Main']
-        ms['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
-        ms['tmp'] = '/tmp/queuer'
+        ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
+        ms['Temporary directory'] = '/tmp/queuer'
         # To be continued...
 
     def save(self):
@@ -105,7 +105,12 @@ class Resources():
         if not isfile(self.path + '/queuer.conf'):
             return
         with open(self.path + '/queuer.conf', 'r') as f:
-            self.settings = load(f)
+            loaded = load(f)
+            for key, value in loaded.items():
+                if key in self.settings:
+                    self.settings[key].update(value)
+                else:
+                    self.settings[key] = value
 
 # Used to freeze shared resources before restart programm
     def freeze(self):

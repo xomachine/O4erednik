@@ -11,13 +11,15 @@ class Module():
     def __init__(self, settings):
         if not 'g03' in settings:
             settings['g03'] = dict()
-            settings['g03']['g03exe'] = ''
-            settings['g03']['g03vis'] = ''
+            settings['g03']['G03 executable file'] = ''
+            settings['g03']['Visualiser executable file'] = ''
         self.g03set = settings['g03']
-        self.nproc = str(settings['Main']['nproc'])
-        environ['g03root'] = dirname(dirname(settings['g03']['g03exe']))
-        environ['GAUSS_EXEDIR'] = dirname(settings['g03']['g03exe'])
-        environ['GAUSS_SCRDIR'] = settings['Main']['tmp']
+        self.nproc = str(settings['Main']['Number of processors'])
+        environ['g03root'] = dirname(
+            dirname(settings['g03']['G03 executable file']))
+        environ['GAUSS_EXEDIR'] = dirname(
+            settings['g03']['G03 executable file'])
+        environ['GAUSS_SCRDIR'] = settings['Main']['Temporary directory']
 
     def register(self, job):
         ifile = job.files['ifile']
@@ -63,7 +65,7 @@ class Module():
                 f.write(buf)
         # Execution
         proc = Popen(
-            [self.g03set['g03exe'], ifile],
+            [self.g03set['G03 executable file'], ifile],
             cwd=dirname(ifile),
             preexec_fn=setsid
             )

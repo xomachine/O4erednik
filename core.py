@@ -69,7 +69,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         # Binding shared objects
         self.cur = Job()
         self.queue = shared.queue
-        self.tmp = shared.mainset['tmp']
+        self.tmp = shared.mainset['Temporary directory']
         # Current running job, not nessesary self.cur
         self.curproc = processor.cur
         self.pid = processor.pid
