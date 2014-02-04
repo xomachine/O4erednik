@@ -67,7 +67,6 @@ class RemoteReporter(LogableThread, FileTransfer):
         super(RemoteReporter, self).__init__()
         self.name = 'reporter-' + peer
         # Binding shared objects
-        host = shared.mainset['host']
         self.cur = Job()
         self.queue = shared.queue
         self.tmp = shared.mainset['tmp']
@@ -78,7 +77,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         tcp = socket()
         tcp.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
-        tcp.bind((host, 50000))
+        tcp.bind(('0.0.0.0', 50000))
         tcp.listen(1)
         self.tcp, addr = tcp.accept()
         self.setsocket(self.tcp)  # Setting socket for file transfer

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from threading import Lock, Event
-from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, gethostname
+from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP
 from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
-from configparser import ConfigParser
+from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, makedirs, listdir
 from logging import basicConfig, DEBUG
@@ -61,7 +61,7 @@ class Resources():
             datefmt='%d.%m.%y %H:%M:%S'
             )
         # Settings
-        self.settings = ConfigParser()
+        self.settings = dict()
         self.default()
         self.load()
         self.mainset = self.settings['Main']
@@ -71,7 +71,7 @@ class Resources():
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        self.udpsocket.bind((self.mainset['host'], 50000))
+        self.udpsocket.bind(('0.0.0.0', 50000))
         # Queue
         self.queue = Queue()
         # Modules
@@ -90,22 +90,22 @@ class Resources():
             self.modules[mname[:-3]] = module.Module(self.settings)
 
     def default(self):
-        if not self.settings.has_section('Main'):
-            self.settings.add_section('Main')
+        if not 'Main' in self.settings:
+            self.settings['Main'] = dict()
         ms = self.settings['Main']
-        ms['host'] = gethostname()
-        ms['nproc'] = str(sysconf('SC_NPROCESSORS_ONLN'))
+        ms['nproc'] = sysconf('SC_NPROCESSORS_ONLN')
         ms['tmp'] = '/tmp/queuer'
         # To be continued...
 
     def save(self):
-        with open(self.path + '/config.ini', 'w') as f:
-            self.settings.write(f)
+        with open(self.path + '/queuer.conf', 'w') as f:
+            dump(self.settings, f, indent=4)
 
     def load(self):
-        if not isfile(self.path + '/config.ini'):
+        if not isfile(self.path + '/queuer.conf'):
             return
-        self.settings.read(self.path + '/config.ini')
+        with open(self.path + '/queuer.conf', 'r') as f:
+            self.settings = load(f)
 
 # Used to freeze shared resources before restart programm
     def freeze(self):

@@ -9,12 +9,12 @@ from subprocess import Popen
 class Module():
 
     def __init__(self, settings):
-        if not settings.has_section('g03'):
-            settings.add_section('g03')
+        if not 'g03' in settings:
+            settings['g03'] = dict()
             settings['g03']['g03exe'] = ''
             settings['g03']['g03vis'] = ''
         self.g03set = settings['g03']
-        self.nproc = settings['Main']['nproc']
+        self.nproc = str(settings['Main']['nproc'])
         environ['g03root'] = dirname(dirname(settings['g03']['g03exe']))
         environ['GAUSS_EXEDIR'] = dirname(settings['g03']['g03exe'])
         environ['GAUSS_SCRDIR'] = settings['Main']['tmp']
