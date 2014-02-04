@@ -47,7 +47,7 @@ class Processor(LogableThread):
                     ('', 50000)
                     )
             if self.cur.type in self.workers:
-                self.inform('start')
+                self.inform('start', self.cur.files['ofile'], self.cur.type)
                 # Do job
                 process = self.workers[self.cur.type].do(self.cur)
                 self.pid = process.pid
@@ -201,7 +201,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
-        self.inform('start', self.peer)
+        self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
 
     def run(self):
         if self._alive is False:

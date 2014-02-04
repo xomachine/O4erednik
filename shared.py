@@ -93,6 +93,7 @@ class Resources():
         if not 'Main' in self.settings:
             self.settings['Main'] = dict()
         ms = self.settings['Main']
+        ms['Text editor executable file'] = 'cat'
         ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
         ms['Temporary directory'] = '/tmp/queuer'
         # To be continued...
@@ -114,7 +115,8 @@ class Resources():
 
 # Used to freeze shared resources before restart programm
     def freeze(self):
-        pass  # TODO: Hot restart
+        pass
+        #TODO: Hot restart
 
 # Used to unfreeze shared resources after programm restarted
     def unfreeze(self):

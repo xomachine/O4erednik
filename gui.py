@@ -7,8 +7,8 @@ from PyQt4.uic import loadUi
 from PyQt4.QtCore import QTextCodec, SIGNAL
 from os import _exit
 from os.path import basename, dirname
-from logging import debug
 from json import dumps
+from subprocess import Popen
 import icons
 
 _icons = dict()
@@ -105,7 +105,6 @@ class LeftMenu(QMenu):
         super(LeftMenu, self).__init__()
         self.now = dict()
         self.backend = backend
-        self.lastpath = '/'
         # Fill elements of menu
         self.addAction(
             _icons['add'],
@@ -132,16 +131,15 @@ class LeftMenu(QMenu):
     def DoAdd(self):
         types = 'Select assignment type'
         for sect in list(self.backend.shared.settings.keys()):
-            if sect == 'Main' or sect == 'DEFAULT':
+            if sect == 'Main':
                 continue
             types += ';;' + sect + '(*.*)'
         filename, jtype = QFileDialog.getOpenFileNameAndFilter(
             None,
             self.tr('Open file'),
-            self.lastpath,
-            types,
-            'Select assignment type',
-            QFileDialog.DontUseNativeDialog
+            filter=types,
+            initialFilter='Select assignment type',
+            options=QFileDialog.DontUseNativeDialog
             )
         if filename:
             self.lastpath = dirname(filename)
@@ -182,6 +180,7 @@ class TrayIcon(QSystemTrayIcon):
         # Create right and left click menus
         self.rmenu = RightMenu(backend)
         self.lmenu = LeftMenu(backend)
+        self.settings = self.backend.shared.settings
 
         self.setContextMenu(self.rmenu)
         self.activated.connect(
@@ -194,7 +193,11 @@ class TrayIcon(QSystemTrayIcon):
         # self.connect(self, SIGNAL(), self.signalhandler)
         self.connect(self, SIGNAL('add(QString, QString)'), self.sAdd)
         self.connect(self, SIGNAL('empty()'), self.sEmpty)
-        self.connect(self, SIGNAL('start(QString)'), self.sStart)
+        self.connect(
+            self,
+            SIGNAL('start(QString, QString, QString)'),
+            self.sStart
+            )
         self.connect(self, SIGNAL('done(QString, QString)'), self.sDone)
 
 # Signal handlers
@@ -218,7 +221,7 @@ class TrayIcon(QSystemTrayIcon):
         self.setIcon(_icons['free'])
         self.showMessage(self.tr('Status'), self.tr('The computer is free!'))
 
-    def sStart(self, target='current'):
+    def sStart(self, target, ofile, jtype):
         self.setIcon(_icons['run'])
         fromqueue = self.lmenu.queue.actions()[0]
         self.lmenu.queue.removeAction(fromqueue)
@@ -226,12 +229,31 @@ class TrayIcon(QSystemTrayIcon):
         if target != 'current':
             started.setTitle(target + ': ' + started.title())
         started.setIcon(_icons['run'])
-        #TODO: Stream log file action
+
         started.actions()[0].triggered.disconnect()
         started.actions()[0].triggered.connect(
                 lambda: self.backend.sendto(
                     dumps(['K', target])
                     )
+                )
+        if 'Visualiser executable file' in self.settings[jtype]:
+                started.addAction(
+                    _icons['run'],
+                    self.tr('Open in visualiser')
+                    ).triggered.connect(
+                        lambda: Popen([
+                            self.settings[jtype]['Visualiser executable file'],
+                            ofile
+                            ])
+                        )
+        started.addAction(
+            _icons['run'],
+            self.tr('Open in text editor')
+            ).triggered.connect(
+                lambda: Popen([
+                    self.settings['Main']['Text editor executable file'],
+                    ofile
+                    ])
                 )
         if self.lmenu.working.isEmpty:
             self.lmenu.working.addMenu(started)
@@ -253,7 +275,6 @@ class TrayIcon(QSystemTrayIcon):
         self.lmenu.now.pop(target, act)
         self.lmenu.working.removeAction(act)
         menu = act.menu()
-        menu.clear()
         if mode == 'error':
             self.sAdd(menu.title(), menu.toolTip())
         else:
@@ -262,11 +283,10 @@ class TrayIcon(QSystemTrayIcon):
                 self.tr('The assignment') +
                 menu.title() + self.tr(' is completed!')
                 )
-            #TODO: Open log file action
-            menu.addAction(
-                _icons['delete'],
-                self.tr('Delete')
-                ).triggered.connect(
+            delaction = menu.actions()[0]
+            delaction.triggered.disconnect()
+            delaction.setText(self.tr('Delete'))
+            delaction.triggered.connect(
                     lambda: self.lmenu.recent.removeAction(menu.menuAction())
                     )
             self.lmenu.recent.addMenu(menu)
@@ -297,7 +317,6 @@ class Backend():
             'error': self.sDone,
             'done': self.sDone,
             }
-        debug('Backend initialized')
 
     def loadicons(self):
         _icons['add'] = self.loadicon(icons.add_icon)
@@ -333,5 +352,10 @@ class Backend():
     def sDone(self, func, target):
         self._tray.emit(SIGNAL('done(QString, QString)'), target, func)
 
-    def sStart(self, func, target='current'):
-        self._tray.emit(SIGNAL('start(QString)'), target)
+    def sStart(self, func, ofile, jtype, target='current'):
+        self._tray.emit(
+            SIGNAL('start(QString, QString, QString)'),
+            target,
+            ofile,
+            jtype
+            )
