@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
-from PyQt4.QtGui import QCursor, QFileDialog
+from PyQt4.QtGui import QCursor, QFileDialog, QDialog, QWidget, QGroupBox
+from PyQt4.QtGui import QVBoxLayout, QIntValidator
+from PyQt4.uic import loadUi
 from PyQt4.QtCore import QTextCodec, SIGNAL
 from os import _exit
 from os.path import basename, dirname
@@ -9,8 +11,66 @@ from logging import debug
 from json import dumps
 import icons
 
-#TODO: sendto and others via emit(SIGNAL)
 _icons = dict()
+
+
+class SettingsDialog(QDialog):
+
+    def __init__(self, backend):
+        super(SettingsDialog, self).__init__()
+        self.backend = backend
+        loadUi('GUI/settings_form.ui', self)
+        self.buildUp()
+
+    def buildUp(self):
+        for section in list(self.backend.shared.settings.keys()):
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+            for key in list(self.backend.shared.settings[section].keys()):
+                value = self.backend.shared.settings[section][key]
+                groupbox = QGroupBox(widget)
+                loadUi('GUI/settings_element.ui', groupbox)
+                if type(value) is str:
+                    groupbox.lineEdit.setText(value)
+                    if value.endswith('path'):
+                        groupbox.toolButton.clicked.connect(
+                            lambda: groupbox.lineEdit.setText(
+                                QFileDialog.getExistingDirectory(
+                                    self,
+                                    self.tr('Select path'),
+                                    )
+                                )
+                            )
+                    elif value.endswith('file'):
+                        groupbox.toolButton.clicked.connect(
+                            lambda: groupbox.lineEdit.setText(
+                                QFileDialog.getOpenFileName(
+                                    self,
+                                    self.tr('Select file'),
+                                    filter=self.tr('All files(*.*)')
+                                    )
+                                )
+                            )
+                    else:
+                        groupbox.toolButton.setShown(False)
+                elif type(value) is int:
+                    groupbox.toolButton.setShown(False)
+                    groupbox.lineEdit.setValidator(QIntValidator(groupbox))
+                    groupbox.lineEdit.setText(str(value))
+                elif type(value) is bool:
+                    groupbox.lineEdit.setShown(False)
+                    groupbox.toolButton.setShown(False)
+                    groupbox.setCheckable(True)
+                    groupbox.setChecked(value)
+                else:
+                    groupbox.lineEdit.setText(str(value))
+                groupbox.setTitle(self.tr(key))
+                layout.addWidget(groupbox)
+            if section == 'Main':
+                self.tabWidget.insertTab(0, widget, self.tr(section))
+            else:
+                self.tabWidget.addTab(widget, self.tr(section))
+        self.tabWidget.setCurrentIndex(0)
 
 
 class LeftMenu(QMenu):
@@ -45,7 +105,7 @@ class LeftMenu(QMenu):
 
     def DoAdd(self):
         types = 'Select assignment type'
-        for sect in self.backend.shared.settings.sections():
+        for sect in list(self.backend.shared.settings.keys()):
             if sect == 'Main' or sect == 'DEFAULT':
                 continue
             types += ';;' + sect + '(*.*)'
@@ -66,9 +126,10 @@ class LeftMenu(QMenu):
 
 class RightMenu(QMenu):
 
-    def __init__(self):
+    def __init__(self, backend):
         super(RightMenu, self).__init__()
-
+        self.backend = backend
+        self.sdialog = SettingsDialog(backend)
         self.addAction(
             _icons['remote'],
             self.tr('Settings')
@@ -83,8 +144,8 @@ class RightMenu(QMenu):
         _exit(0)
 
     def DoSetup(self):
-        #TODO: Settings
-        pass
+
+        self.sdialog.exec_()
 
 
 class TrayIcon(QSystemTrayIcon):
@@ -93,7 +154,7 @@ class TrayIcon(QSystemTrayIcon):
         super(TrayIcon, self).__init__()
         self.backend = backend
         # Create right and left click menus
-        self.rmenu = RightMenu()
+        self.rmenu = RightMenu(backend)
         self.lmenu = LeftMenu(backend)
 
         self.setContextMenu(self.rmenu)
@@ -195,7 +256,7 @@ class Backend():
         self.shared = shared
         self.sendto = lambda x: shared.udpsocket.sendto(
             x.encode('utf-8'),
-            (shared.mainset['host'], 50000)
+            ('127.0.0.1', 50000)
             )
         self._app = QApplication([])
         self._app.setQuitOnLastWindowClosed(False)
