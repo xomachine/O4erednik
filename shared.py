@@ -69,7 +69,7 @@ class Resources():
         self.settings['Main']
         self.bcastaddr = lambda x: inet_ntoa(
             ioctl(
-                socket(AF_INET, SOCK_DGRAM), 0x891b, pack(
+                socket(AF_INET, SOCK_DGRAM), 0x8919, pack(  # SIOCGIFBRDADDR
                     '256s', x.encode('utf-8'))
                 )[20:24]
             )
