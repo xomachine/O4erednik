@@ -27,6 +27,8 @@ class Processor(LogableThread):
         self.cur = None
         # Binding shared objects
         self.queue = shared.queue
+        self.bcastaddr = shared.bcastaddr
+        self.ifname = shared.settings['Main']['Interface']
         self.inform = shared.inform
         self.udp = shared.udpsocket
         self.workers = shared.modules
@@ -37,14 +39,14 @@ class Processor(LogableThread):
                 # Send Free signal when queue is empty
                 self.udp.sendto(
                     dumps(['F', None]).encode('utf-8'),
-                    ('', 50000)
+                    (self.bcastaddr(self.ifname), 50000)
                     )
                 self.inform('empty')
             self.cur = self.queue.get()
             if self.queue.fill.isSet():  # Look For Free if queue still fill
                 self.udp.sendto(
                     dumps(['L', None]).encode('utf-8'),
-                    ('', 50000)
+                    (self.bcastaddr(self.ifname), 50000)
                     )
             if self.cur.type in self.workers:
                 self.inform('start', self.cur.files['ofile'], self.cur.type)
@@ -69,7 +71,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         # Binding shared objects
         self.cur = Job()
         self.queue = shared.queue
-        self.tmp = shared.mainset['Temporary directory']
+        self.tmp = shared.settings['Main']['Temporary directory']
         # Current running job, not nessesary self.cur
         self.curproc = processor.cur
         self.pid = processor.pid
@@ -260,6 +262,7 @@ class UDPServer(LogableThread):
         self.queue = shared.queue
         self.udp = shared.udpsocket
         self.inform = shared.inform
+        self.ifname = shared.settings['Main']['Interface']
         # Creating queue processor
         self.processor = Processor(self.shared)
         # Creating list of receivers
@@ -298,7 +301,7 @@ class UDPServer(LogableThread):
         if self.processor.cur:  # Look For Free if processor is already busy
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
-                ('', 50000)
+                (self.shared.bcastaddr(self.ifname), 50000)
                 )
         self.inform('add', job.files['ifile'])
         self.queue.put(job)
@@ -321,7 +324,7 @@ class UDPServer(LogableThread):
         if self.queue.fill.isSet():  # Look For Free if queue still fill
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
-                ('', 50000)
+                (self.shared.bcastaddr(self.ifname), 50000)
                 )
         self.receivers[peer].start()
 

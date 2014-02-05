@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from threading import Lock, Event
-from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP
-from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
+from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, if_nameindex
+from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, makedirs, listdir
-from logging import basicConfig, DEBUG
+from logging import basicConfig, WARNING
+from fcntl import ioctl
+from struct import pack
 
 
 class Queue():
@@ -56,7 +58,7 @@ class Resources():
         # Logging
         basicConfig(
             filename=self.path + '/queuer.log',
-            level=DEBUG,
+            level=WARNING,
             format='[%(asctime)s] %(threadName)s: %(levelname)s, %(message)s',
             datefmt='%d.%m.%y %H:%M:%S'
             )
@@ -64,9 +66,15 @@ class Resources():
         self.settings = dict()
         self.default()
         self.load()
-        self.mainset = self.settings['Main']
+        self.settings['Main']
+        self.bcastaddr = lambda x: inet_ntoa(
+            ioctl(
+                socket(AF_INET, SOCK_DGRAM), 0x891b, pack(
+                    '256s', x.encode('utf-8'))
+                )[20:24]
+            )
         # Environment
-        makedirs(self.mainset['Temporary directory'], exist_ok=True)
+        makedirs(self.settings['Main']['Temporary directory'], exist_ok=True)
         # Socket
         self.udpsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -96,11 +104,13 @@ class Resources():
         ms['Text editor executable file'] = 'cat'
         ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
         ms['Temporary directory'] = '/tmp/queuer'
+        ms[tuple('Interface')] = if_nameindex
+        ms['Interface'] = ['lo']
         # To be continued...
 
     def save(self):
         with open(self.path + '/queuer.conf', 'w') as f:
-            dump(self.settings, f, indent=4)
+            dump(self.settings, f, indent=4, skipkeys=True)
 
     def load(self):
         if not isfile(self.path + '/queuer.conf'):

@@ -2,7 +2,7 @@
 
 from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
 from PyQt4.QtGui import QCursor, QFileDialog, QDialog, QWidget, QGroupBox
-from PyQt4.QtGui import QVBoxLayout, QIntValidator
+from PyQt4.QtGui import QVBoxLayout, QIntValidator, QScrollArea
 from PyQt4.uic import loadUi
 from PyQt4.QtCore import QTextCodec, SIGNAL
 from os import _exit
@@ -20,21 +20,24 @@ class SettingsDialog(QDialog):
         super(SettingsDialog, self).__init__()
         self.backend = backend
         loadUi('GUI/settings_form.ui', self)
+
         self.buildUp()
 
     def buildUp(self):
-        for section in list(self.backend.shared.settings.keys()):
-            widget = QWidget()
+        for sect in list(self.backend.shared.settings.keys()):
+            scroll = QScrollArea(self.tabWidget)
+            widget = QWidget(self.tabWidget)
             layout = QVBoxLayout(widget)
-            for key in list(self.backend.shared.settings[section].keys()):
-                value = self.backend.shared.settings[section][key]
+            for key, value in list(self.backend.shared.settings[sect].items()):
+                if not type(key) is str:
+                    continue
                 groupbox = QGroupBox(widget)
                 loadUi('GUI/settings_element.ui', groupbox)
                 if type(value) is str:
-                    groupbox.lineEdit.setText(value)
+                    groupbox.comboBox.lineEdit().setText(value)
                     if key.endswith('directory'):
                         groupbox.toolButton.clicked.connect(
-                            lambda y, x=groupbox.lineEdit: x.setText(
+                            lambda y, x=groupbox.comboBox.lineEdit(): x.setText(
                                 QFileDialog.getExistingDirectory(
                                     self,
                                     self.tr('Select path'),
@@ -45,7 +48,7 @@ class SettingsDialog(QDialog):
                             )
                     elif key.endswith('file'):
                         groupbox.toolButton.clicked.connect(
-                            lambda y, x=groupbox.lineEdit: x.setText(
+                            lambda y, x=groupbox.comboBox.lineEdit(): x.setText(
                                 QFileDialog.getOpenFileName(
                                     self,
                                     self.tr('Select file'),
@@ -57,30 +60,42 @@ class SettingsDialog(QDialog):
                     else:
                         groupbox.toolButton.setShown(False)
                     self.saveButton.clicked.connect(
-                        lambda x, y=key, z=groupbox.lineEdit, s=section:
+                        lambda x, y=key, z=groupbox.comboBox, s=sect:
                             self.backend.shared.settings[s].update({y:
-                            z.text()}
+                            z.lineEdit().text()}
                             )
                         )
                 elif type(value) is int:
                     groupbox.toolButton.setShown(False)
-                    groupbox.lineEdit.setValidator(QIntValidator(groupbox))
-                    groupbox.lineEdit.setText(str(value))
+                    groupbox.comboBox.lineEdit().setValidator(
+                        QIntValidator(groupbox))
+                    groupbox.comboBox.lineEdit().setText(str(value))
                     self.saveButton.clicked.connect(
-                        lambda x, y=key, z=groupbox.lineEdit, s=section:
-                            self.backend.shared.settings[s].update({y:
-                            int(z.text())}
+                        lambda x, y=key, z=groupbox.comboBox.lineEdit(), s=sect:
+                            self.backend.shared.settings[s].update(
+                                {y: int(z.text())}
                             )
                         )
                 elif type(value) is bool:
-                    groupbox.lineEdit.setShown(False)
+                    groupbox.comboBox.setShown(False)
                     groupbox.toolButton.setShown(False)
                     groupbox.setCheckable(True)
                     groupbox.setChecked(value)
                     self.saveButton.clicked.connect(
-                        lambda x, y=key, z=groupbox.isChecked, s=section:
+                        lambda x, y=key, z=groupbox.isChecked, s=sect:
                             self.backend.shared.settings[s].update({y:
                             z()}
+                            )
+                        )
+                elif type(value) is list:
+                    for item in self.backend.shared.settings[sect][tuple(key)](
+                        ):
+                        groupbox.comboBox.addItem(item[1])
+                    groupbox.comboBox.lineEdit().setText(value[0])
+                    self.saveButton.clicked.connect(
+                        lambda x, y=key, z=groupbox.comboBox, s=sect:
+                            self.backend.shared.settings[s].update({y:
+                            z.lineEdit().text()}
                             )
                         )
                 else:
@@ -88,10 +103,12 @@ class SettingsDialog(QDialog):
                     groupbox.lineEdit.Enable(False)
                 groupbox.setTitle(self.tr(key))
                 layout.addWidget(groupbox)
-            if section == 'Main':
-                self.tabWidget.insertTab(0, widget, self.tr(section))
+
+            if sect == 'Main':
+                self.tabWidget.insertTab(0, scroll, self.tr(sect))
             else:
-                self.tabWidget.addTab(widget, self.tr(section))
+                self.tabWidget.addTab(scroll, self.tr(sect))
+            scroll.setWidget(widget)
         self.tabWidget.setCurrentIndex(0)
         self.saveButton.clicked.connect(
                         lambda: self.backend.shared.save() or
