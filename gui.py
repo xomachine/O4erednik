@@ -88,6 +88,7 @@ class SettingsDialog(QDialog):
                             )
                         )
                 elif type(value) is list:
+                    groupbox.toolButton.setShown(False)
                     for item in self.backend.shared.settings[sect][tuple(key)](
                         ):
                         groupbox.comboBox.addItem(item[1])
@@ -95,7 +96,7 @@ class SettingsDialog(QDialog):
                     self.saveButton.clicked.connect(
                         lambda x, y=key, z=groupbox.comboBox, s=sect:
                             self.backend.shared.settings[s].update({y:
-                            z.lineEdit().text()}
+                            [z.lineEdit().text()]}
                             )
                         )
                 else:
