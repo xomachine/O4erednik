@@ -234,9 +234,12 @@ class RemoteReceiver(LogableThread, FileTransfer):
             ])
         self.tcp.send(jpack.encode('utf-8'))
         # Waiting for response from remote host
+        #FIXME: Strong nessesary to separate each message!
         while self._alive:
             try:
-                req, param = loads(self.tcp.recv(1024).decode('utf-8'))
+                x = self.tcp.recv(1024)
+                print(x)
+                req, param = loads(x.decode('utf-8'))
             except timeout:
                 req = 'E'
             if req == 'G':  # Get file

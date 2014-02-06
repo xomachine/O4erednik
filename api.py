@@ -45,20 +45,22 @@ class FileTransfer():
     def setsocket(self, sock):
         self._tcp = sock
 
-    def sendfile(self, path, blocksize=2048, sbs=False, alive=lambda: True,
+    def sendfile(self, path, blocksize=1024, sbs=False, alive=lambda: True,
         sleeptime=10):
         if not isfile(path):
             self._tcp.send(pack('c?', self.FT_ERROR, sbs))
             return
+        print('Handshaking for ' + path)
         # Request for sending
         self._tcp.send(pack('c?', self.FT_HANDSHAKE, sbs))
         if self._tcp.recv(1) != self.FT_OK:
             return
-        with open(path, 'rb') as f:
+        with open(path, 'rb', buffering=0) as f:
             # Sending cycle
             while alive():
                 where = f.tell()
                 buf = f.read(blocksize)
+                print(buf)
                 if buf:
                     self._tcp.send(
                         pack(self.FT_REQFMT, self.FT_SENDREQ, len(buf)))
@@ -72,13 +74,15 @@ class FileTransfer():
                     if answer != self.FT_OK:
                         return answer
                     print('Again')
+                    buf = None
                 elif sbs:
                     self._tcp.send(pack(self.FT_SLEEP, sleeptime))
                     sleep(sleeptime)
                     f.seek(where)
                 else:
                     break
-            self._tcp.send(pack(self.FT_STOP, 0))
+            self._tcp.send(pack(self.FT_REQFMT, self.FT_STOP, 0))
+            print('Stop sent')
 
     def recvfile(self, path, alive=True):
         req, sbs = unpack('c?', self._tcp.recv(self.FT_HSIZE))
