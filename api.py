@@ -81,15 +81,18 @@ class FileTransfer():
             self._tcp.send(pack(self.FT_STOP, 0))
 
     def recvfile(self, path, alive=True):
-        req, sbs = unpack(self.FT_REQFMT, self._tcp.recv(self.FT_HSIZE))
-        if req != self.FT_SENDREQ:
+        req, sbs = unpack('c?', self._tcp.recv(self.FT_HSIZE))
+        if req != self.FT_HANDSHAKE:
             return req
         with open(path, 'wb+') as f:
             self._tcp.send(self.FT_OK)
-            while alive():
+            while alive:
+                rq = self._tcp.recv(self.FT_SREQSIZE)
+                print(rq)
+                print(len(rq))
                 req, size = unpack(
                     self.FT_REQFMT,
-                    self._tcp.recv(self.FT_REQSIZE)
+                    rq
                     )
                 if req == self.FT_SENDREQ:
                     self._tcp.send(self.FT_OK)
