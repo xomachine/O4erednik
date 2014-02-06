@@ -191,6 +191,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         # Binding shared objects
         self.queue = shared.queue
         self.inform = shared.inform
+        self.sendto = shared.udpsocket.sendto
         # Socket creation
         self.tcp = socket()
         self.tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
@@ -250,6 +251,8 @@ class RemoteReceiver(LogableThread, FileTransfer):
 
     def stop(self):
         self._alive = False
+        self.sendto(
+            dumps(['K', self.peer]).encode('utf-8'), ('127.0.0.1', 50000))
 
 
 class UDPServer(LogableThread):
@@ -280,7 +283,8 @@ class UDPServer(LogableThread):
             }
 
     def run(self):
-        self.processor.start()
+        #self.processor.start()
+        self.processor.cur = True
         while self._alive:
             data, peer = self.udp.recvfrom(1024)
             debug((data, peer))
@@ -316,8 +320,8 @@ class UDPServer(LogableThread):
             not self.queue.fill.isSet()
             ):
             return
-        self.sendto(
-            dumps(['S', None]),
+        self.udp.sendto(
+            dumps(['S', None]).encode('utf-8'),
             (peer, 50000)
             )
         self.receivers[peer] = RemoteReceiver(self.shared, peer)

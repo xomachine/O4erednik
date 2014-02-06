@@ -16,11 +16,15 @@ class LogableThread(Thread):
         self._real_run = self.run
         self.run = self._wrap_run
 
+    def stop(self):
+        self._alive = False
+
     def _wrap_run(self):
         try:
             self._real_run()
         except:
             exception('Uncaught exception was occured!')
+            self.stop()
 
 
 class FileTransfer():
@@ -31,9 +35,9 @@ class FileTransfer():
     FT_SLEEP = b'W'
     FT_STOP = b'B'
     FT_ERROR = b'E'
-    FT_REQFMT = 'cQ'
+    FT_REQFMT = 'cI'
     FT_HSIZE = 2
-    FT_SREQSIZE = 16
+    FT_SREQSIZE = 8
 
     def __init__(self):
         super(FileTransfer, self).__init__()
@@ -56,14 +60,18 @@ class FileTransfer():
                 where = f.tell()
                 buf = f.read(blocksize)
                 if buf:
-                    self._tcp.send(pack(self.FT_REQFMT, len(buf)))
+                    self._tcp.send(
+                        pack(self.FT_REQFMT, self.FT_SENDREQ, len(buf)))
+                    print('REQ Sent')
                     answer = self._tcp.recv(1)
                     if answer != self.FT_OK:
                         return answer
                     self._tcp.send(buf)
+                    print('Data Sent')
                     answer = self._tcp.recv(1)
                     if answer != self.FT_OK:
                         return answer
+                    print('Again')
                 elif sbs:
                     self._tcp.send(pack(self.FT_SLEEP, sleeptime))
                     sleep(sleeptime)
