@@ -192,6 +192,9 @@ class RemoteReporter(LogableThread, FileTransfer):
                 'T',
                 reals[fakes.index(splited[1])] + '/' + splited[2]
                 ]).encode('utf-8'))
+            if self.tcp.recv(1) != b'O':
+                self.stop()
+                return
             print('Sending ' + lpath)
             self.sendfile(lpath)
         # Closing connection
@@ -246,11 +249,13 @@ class RemoteReceiver(LogableThread, FileTransfer):
             if req == 'G':  # Get file
                 self.sendfile(param)
             elif req == 'T':  # Transfer file
+                self.tcp.send(b'O')
                 self.recvfile(param)
             elif req == 'W':  # Wait some seconds and req again
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
+                self.tcp.send(b'O')
                 self.recvfile(param, self._alive)
             elif req == 'D':  # All Done, job completed
                 if self.job.id > 0:
