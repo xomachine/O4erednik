@@ -164,6 +164,9 @@ class RemoteReporter(LogableThread, FileTransfer):
                     reals[fakes.index(splited[1])] + '/' + splited[2]
                     ]).encode('utf-8'))
                 # Send log
+                if self.tcp.recv(1) != b'O':
+                    self.stop()
+                    return
                 self.sendfile(
                     self.cur.files['ofile'],
                     sbs=True,
