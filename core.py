@@ -3,10 +3,11 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error
-from os import kill, killpg, urandom
+from os import kill, killpg, makedirs
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from time import sleep
+from uuid import uuid4
 
 
 class Job():
@@ -25,6 +26,7 @@ class Processor(LogableThread):
         super(Processor, self).__init__()
         self.name = 'Processor'
         self.cur = None
+        self.pid = None
         # Binding shared objects
         self.queue = shared.queue
         self.bcastaddr = shared.bcastaddr
@@ -70,6 +72,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.name = 'reporter-' + peer
         # Binding shared objects
         self.cur = Job()
+        self.inform = shared.inform
         self.queue = shared.queue
         self.tmp = shared.settings['Main']['Temporary directory']
         # Current running job, not nessesary self.cur
@@ -81,7 +84,12 @@ class RemoteReporter(LogableThread, FileTransfer):
         tcp.settimeout(10)  # OPTIMIZE: Find optimal timeout
         tcp.bind(('0.0.0.0', 50000))
         tcp.listen(1)
-        self.tcp, addr = tcp.accept()
+        try:
+            self.tcp, addr = tcp.accept()
+        except timeout:
+            tcp.close()
+            self._alive = False
+            return
         self.setsocket(self.tcp)  # Setting socket for file transfer
         tcp.close()
 
@@ -93,11 +101,16 @@ class RemoteReporter(LogableThread, FileTransfer):
             self.queue.remove(self.cur)
 
     def run(self):
+        if not self._alive:
+            return
+#TODO: Alive check in parent class LogableThread
         # Receive job class as it is
         try:
             sjob = loads(self.tcp.recv(4096).decode('utf-8'))
         except timeout:
-            pass
+            error('Timeout while obtainig job')
+            self.stop()
+            return
         # Detach remote paths from job
         self.cur = Job(*sjob)
         rfiles = self.cur.files
@@ -111,17 +124,20 @@ class RemoteReporter(LogableThread, FileTransfer):
                 # Create new random fake path on local host and binding
                 # with real
                 reals.append(rdir)
-                fakes.append(urandom(3).encode('hex'))
+                fakes.append(str(uuid4()))
             # Generate path to file in local computer
             lpath = self.tmp + '/' + fakes[reals.index(rdir)] + '/' + fname
             # Request file from remote host by its real path
             self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
+            # Make directory
+            makedirs(dirname(lpath), exist_ok=True)
             # Receive file to local path
             self.recvfile(lpath)
             # Attach local path to job
             self.cur.files[name] = lpath
         # Put job into the queue
         self.queue.put(self.cur)
+        self.inform('add', self.cur.files['ifile'])
         # While job still in queue, receiver must wait
         while self.queue.is_contain(self.cur):
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
@@ -346,4 +362,4 @@ class UDPServer(LogableThread):
         self.inform('done', str(params))
 
     def mShare(self, params, peer):
-        RemoteReporter(self.shared, peer).start()
+        RemoteReporter(self.processor, self.shared, peer).start()
