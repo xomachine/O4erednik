@@ -78,12 +78,13 @@ class FileTransfer():
                     f.seek(where)
                 else:
                     break
-            self._tcp.send(pack(self.FT_STOP, 0))
+            self._tcp.send(pack(self.FT_REQFMT, self.FT_STOP, 0))
 
     def recvfile(self, path, alive=True):
         req, sbs = unpack('c?', self._tcp.recv(self.FT_HSIZE))
         if req != self.FT_HANDSHAKE:
             return req
+        print('Got Handshake for ' + path)
         with open(path, 'wb+') as f:
             self._tcp.send(self.FT_OK)
             while alive:
@@ -94,13 +95,16 @@ class FileTransfer():
                     self.FT_REQFMT,
                     rq
                     )
+                print('Size is ' + str(size))
                 if req == self.FT_SENDREQ:
                     self._tcp.send(self.FT_OK)
                     f.write(self._tcp.recv(size))
                     self._tcp.send(self.FT_OK)
+                    print('Sent OK signal after receiving data')
                 elif req == self.FT_SLEEP:
                     sleep(size)
                 elif req == self.FT_STOP:
+                    print('STOP signal by remote side...')
                     return self.FT_OK
                 else:
                     self._tcp.send(self.FT_ERROR)
