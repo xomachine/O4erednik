@@ -181,17 +181,18 @@ class RemoteReporter(LogableThread, FileTransfer):
                 else:
                     sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion sending results back
-        for name, lpath in self.cur.files.keys():
+        print('Here we are?')
+        for name, lpath in self.cur.files.items():
             # Split local path to fake dir and filename
-            splited = dirname(
-                    lpath
-                    )[len(self.tmp):].split('/', 2)
+            splited = lpath[len(self.tmp):].split('/', 2)
             # Translate fake dir to remote real dir,
             # request and send file
+            print(splited)
             self.tcp.send(dumps([
                 'T',
                 reals[fakes.index(splited[1])] + '/' + splited[2]
                 ]).encode('utf-8'))
+            print('Sending ' + lpath)
             self.sendfile(lpath)
         # Closing connection
         self.tcp.send(dumps(['D', None]).encode('utf-8'))
@@ -302,8 +303,8 @@ class UDPServer(LogableThread):
             }
 
     def run(self):
-        #self.processor.start()
-        self.processor.cur = True
+        self.processor.start()
+        #self.processor.cur = True
         while self._alive:
             data, peer = self.udp.recvfrom(1024)
             debug((data, peer))
