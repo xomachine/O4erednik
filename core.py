@@ -5,9 +5,10 @@ from json import loads, dumps
 from logging import debug, error
 from os import kill, killpg, makedirs
 from os.path import dirname, basename
-from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
+from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep
 from uuid import uuid4
+from threading import enumerate as threads
 
 
 class Job():
@@ -34,10 +35,10 @@ class Processor(LogableThread):
         self.inform = shared.inform
         self.udp = shared.udpsocket
         self.workers = shared.modules
-        
+
     def getcur(self):
         return self.cur
-      
+
     def getpid(self):
         return self.pid
 
@@ -96,7 +97,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             tcp.close()
             self._alive = False
             return
-        self.tcp.settimeout(10) 
+        self.tcp.settimeout(10)
         self.setsocket(self.tcp)  # Setting socket for file transfer
         tcp.close()
 
@@ -108,9 +109,6 @@ class RemoteReporter(LogableThread, FileTransfer):
             self.queue.remove(self.cur)
 
     def run(self):
-        if not self._alive:
-            return
-#TODO: Alive check in parent class LogableThread
         # Receive job class as it is
         try:
             sjob = loads(self.tcp.recv(4096).decode('utf-8'))
@@ -233,8 +231,6 @@ class RemoteReceiver(LogableThread, FileTransfer):
         self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
 
     def run(self):
-        if self._alive is False:
-            return
         # Sending job object as it is
         jpack = dumps([
             self.job.type,
@@ -277,11 +273,6 @@ class RemoteReceiver(LogableThread, FileTransfer):
         if self._alive is False:  # Sharing process end
             self.tcp.close()
 
-    def stop(self):
-        self._alive = False
-        self.sendto(
-            dumps(['K', self.peer]).encode('utf-8'), ('127.0.0.1', 50000))
-
 
 class UDPServer(LogableThread):
 
@@ -296,8 +287,6 @@ class UDPServer(LogableThread):
         self.ifname = shared.settings['Main']['Interface']
         # Creating queue processor
         self.processor = Processor(self.shared)
-        # Creating list of receivers
-        self.receivers = dict()
         # Fill message-action dictonary
         self.fill_actions()
 
@@ -322,7 +311,7 @@ class UDPServer(LogableThread):
                 debug('It is not a proper request')
                 continue
             if mtype in self.actions:
-                self.actions[mtype](params, peer[0])
+                self.actions[mtype](params, gethostbyaddr(peer[0])[0])
 
 # Actions
 
@@ -344,7 +333,7 @@ class UDPServer(LogableThread):
     def mFree(self, params, peer):
         if (
             self.processor.cur is None or
-            peer in self.receivers or
+            'receiver-' + peer in threads() or
             not self.queue.fill.isSet()
             ):
             return
@@ -352,13 +341,12 @@ class UDPServer(LogableThread):
             dumps(['S', None]).encode('utf-8'),
             (peer, 50000)
             )
-        self.receivers[peer] = RemoteReceiver(self.shared, peer)
+        RemoteReceiver(self.shared, peer).start()
         if self.queue.fill.isSet():  # Look For Free if queue still fill
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
                 (self.shared.bcastaddr(self.ifname), 50000)
                 )
-        self.receivers[peer].start()
 
     # Search for possibility to share work
     def mLFF(self, params, peer):
@@ -369,12 +357,13 @@ class UDPServer(LogableThread):
                 )
 
     def mKill(self, params, peer):
+        debug('Kill ' + str(params))
         if params == 'current':
             killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
         elif params is int:
             self.queue.remove(params)
-        elif params in self.receivers:
-            self.receivers[params].stop()
+        elif 'receiver-' + params in threads():
+            threads()[params].stop()
         self.inform('done', str(params))
 
     def mShare(self, params, peer):

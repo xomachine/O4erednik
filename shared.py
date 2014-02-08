@@ -6,7 +6,7 @@ from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, makedirs, listdir
-from logging import basicConfig, WARNING
+from logging import basicConfig, DEBUG as LEVEL
 from fcntl import ioctl
 from struct import pack
 
@@ -58,7 +58,7 @@ class Resources():
         # Logging
         basicConfig(
             filename=self.path + '/queuer.log',
-            level=WARNING,
+            level=LEVEL,
             format='[%(asctime)s] %(threadName)s: %(levelname)s, %(message)s',
             datefmt='%d.%m.%y %H:%M:%S'
             )

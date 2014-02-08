@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from threading import Thread
-from logging import exception
+from logging import exception, debug
 from os.path import isfile
 from struct import pack, unpack
 from time import sleep
@@ -20,6 +20,8 @@ class LogableThread(Thread):
         self._alive = False
 
     def _wrap_run(self):
+        if not self._alive:
+            return
         try:
             self._real_run()
         except:
@@ -50,7 +52,7 @@ class FileTransfer():
         if not isfile(path):
             self._tcp.send(pack('c?', self.FT_ERROR, sbs))
             return
-        print('Handshaking for ' + path)
+        debug('Handshaking for ' + path)
         # Request for sending
         self._tcp.send(pack('c?', self.FT_HANDSHAKE, sbs))
         if self._tcp.recv(1) != self.FT_OK:
@@ -72,19 +74,20 @@ class FileTransfer():
                         return answer
                     buf = None
                 elif sbs:
-                    self._tcp.send(pack(self.FT_REQFMT, self.FT_SLEEP, sleeptime))
+                    self._tcp.send(pack(
+                        self.FT_REQFMT, self.FT_SLEEP, sleeptime))
                     sleep(sleeptime)
                     f.seek(where)
                 else:
                     break
             self._tcp.send(pack(self.FT_REQFMT, self.FT_STOP, 0))
-            print('Completed ' + path)
+            debug('Completed ' + path)
 
     def recvfile(self, path, alive=True):
         req, sbs = unpack('c?', self._tcp.recv(self.FT_HSIZE))
         if req != self.FT_HANDSHAKE:
             return req
-        print('Got Handshake for ' + path)
+        debug('Got Handshake for ' + path)
         with open(path, 'wb+') as f:
             self._tcp.send(self.FT_OK)
             while alive:
@@ -100,7 +103,9 @@ class FileTransfer():
                 elif req == self.FT_SLEEP:
                     sleep(size)
                 elif req == self.FT_STOP:
+                    debug('Stopped ' + path)
                     return self.FT_OK
                 else:
                     self._tcp.send(self.FT_ERROR)
             self._tcp.send(self.FT_STOP)
+            debug('Done ' + path)
