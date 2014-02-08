@@ -2,7 +2,7 @@
 
 from api import LogableThread, FileTransfer
 from json import loads, dumps
-from logging import debug, error
+from logging import debug, error, warning
 from os import kill, killpg, makedirs
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
@@ -71,7 +71,7 @@ class Processor(LogableThread):
                         pass
             self.cur = None
 
-#FIXME: Canceling from gui remote job is not doing it.
+
 class RemoteReporter(LogableThread, FileTransfer):
 
     def __init__(self, processor, shared, peer):
@@ -223,12 +223,20 @@ class RemoteReceiver(LogableThread, FileTransfer):
         try:
             self.tcp.connect((peer, 50000))
         except:
-            error('Unable to connect remote worker' + peer)
+            error('Unable to connect remote worker ' + peer)
             self.stop()
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
         self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
+
+    def exception(self):
+        warning(
+            '''Something stopped this thread by raising
+            exception, job returned into queue''')
+        self.stop()
+        self.queue.put(self.job)
+        self.inform('error', self.peer)
 
     def run(self):
         # Sending job object as it is
@@ -241,10 +249,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         self.tcp.send(jpack.encode('utf-8'))
         # Waiting for response from remote host
         while self._alive:
-            try:
-                req, param = loads(self.tcp.recv(1024).decode('utf-8'))
-            except timeout:
-                req = 'E'
+            req, param = loads(self.tcp.recv(1024).decode('utf-8'))
             if req == 'G':  # Get file
                 self.sendfile(param)
             elif req == 'T':  # Transfer file
@@ -255,7 +260,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 sleep(param)
             elif req == 'S':  # Start streaming
                 self.tcp.send(b'O')
-                self.recvfile(param, self._alive)
+                self.recvfile(param, lambda: True if self._alive else False)
             elif req == 'D':  # All Done, job completed
                 if self.job.id > 0:
                     try:
@@ -265,12 +270,10 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.inform('done', self.peer)
                 self.stop()
             else:
-                self.stop()
-                self.queue.put(self.job)
-                self.inform('error', self.peer)
-                if req != 'E':  # Unexpected response
-                    error('Unexpected response:' + req)
+                error('Unexpected response:' + req)
+                raise
         if self._alive is False:  # Sharing process end
+            debug('Closing ' + self.name)
             self.tcp.close()
 
 
@@ -333,7 +336,6 @@ class UDPServer(LogableThread):
     def mFree(self, params, peer):
         if (
             self.processor.cur is None or
-            'receiver-' + peer in threads() or
             not self.queue.fill.isSet()
             ):
             return
@@ -362,8 +364,12 @@ class UDPServer(LogableThread):
             killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
         elif params is int:
             self.queue.remove(params)
-        elif 'receiver-' + params in threads():
-            threads()[params].stop()
+        else:
+            all_threads = threads()
+            for thread in all_threads:
+                if thread.name == 'receiver-' + params:
+                    debug('Killing receiver-' + params)
+                    thread.stop()
         self.inform('done', str(params))
 
     def mShare(self, params, peer):

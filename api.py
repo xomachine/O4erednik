@@ -19,14 +19,17 @@ class LogableThread(Thread):
     def stop(self):
         self._alive = False
 
+    def exception(self):
+        exception('Uncaught exception was occured!')
+        self.stop()
+
     def _wrap_run(self):
         if not self._alive:
             return
         try:
             self._real_run()
         except:
-            exception('Uncaught exception was occured!')
-            self.stop()
+            self.exception()
 
 
 class FileTransfer():
@@ -83,14 +86,14 @@ class FileTransfer():
             self._tcp.send(pack(self.FT_REQFMT, self.FT_STOP, 0))
             debug('Completed ' + path)
 
-    def recvfile(self, path, alive=True):
+    def recvfile(self, path, alive=lambda: True):
         req, sbs = unpack('c?', self._tcp.recv(self.FT_HSIZE))
         if req != self.FT_HANDSHAKE:
             return req
         debug('Got Handshake for ' + path)
         with open(path, 'wb+') as f:
             self._tcp.send(self.FT_OK)
-            while alive:
+            while alive():
                 rq = self._tcp.recv(self.FT_SREQSIZE)
                 req, size = unpack(
                     self.FT_REQFMT,
