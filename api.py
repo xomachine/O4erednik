@@ -60,29 +60,25 @@ class FileTransfer():
             while alive():
                 where = f.tell()
                 buf = f.read(blocksize)
-                print(buf)
                 if buf:
                     self._tcp.send(
                         pack(self.FT_REQFMT, self.FT_SENDREQ, len(buf)))
-                    print('REQ Sent')
                     answer = self._tcp.recv(1)
                     if answer != self.FT_OK:
                         return answer
                     self._tcp.send(buf)
-                    print('Data Sent')
                     answer = self._tcp.recv(1)
                     if answer != self.FT_OK:
                         return answer
-                    print('Again')
                     buf = None
                 elif sbs:
-                    self._tcp.send(pack(self.FT_SLEEP, sleeptime))
+                    self._tcp.send(pack(self.FT_REQFMT, self.FT_SLEEP, sleeptime))
                     sleep(sleeptime)
                     f.seek(where)
                 else:
                     break
             self._tcp.send(pack(self.FT_REQFMT, self.FT_STOP, 0))
-            print('Stop sent')
+            print('Completed ' + path)
 
     def recvfile(self, path, alive=True):
         req, sbs = unpack('c?', self._tcp.recv(self.FT_HSIZE))
@@ -93,22 +89,17 @@ class FileTransfer():
             self._tcp.send(self.FT_OK)
             while alive:
                 rq = self._tcp.recv(self.FT_SREQSIZE)
-                print(rq)
-                print(len(rq))
                 req, size = unpack(
                     self.FT_REQFMT,
                     rq
                     )
-                print('Size is ' + str(size))
                 if req == self.FT_SENDREQ:
                     self._tcp.send(self.FT_OK)
                     f.write(self._tcp.recv(size))
                     self._tcp.send(self.FT_OK)
-                    print('Sent OK signal after receiving data')
                 elif req == self.FT_SLEEP:
                     sleep(size)
                 elif req == self.FT_STOP:
-                    print('STOP signal by remote side...')
                     return self.FT_OK
                 else:
                     self._tcp.send(self.FT_ERROR)
