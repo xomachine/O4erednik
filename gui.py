@@ -298,7 +298,7 @@ class TrayIcon(QSystemTrayIcon):
         else:
             self.showMessage(
                 self.tr('Assignment completed'),
-                self.tr('The assignment') +
+                self.tr('The assignment ') +
                 menu.title() + self.tr(' is completed!')
                 )
             delaction = menu.actions()[0]

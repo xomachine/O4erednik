@@ -59,7 +59,7 @@ class FileTransfer():
         # Request for sending
         self._tcp.send(pack('c?', self.FT_HANDSHAKE, sbs))
         if self._tcp.recv(1) != self.FT_OK:
-            raise
+            return
         with open(path, 'rb', buffering=0) as f:
             # Sending cycle
             while alive():
@@ -70,11 +70,11 @@ class FileTransfer():
                         pack(self.FT_REQFMT, self.FT_SENDREQ, len(buf)))
                     answer = self._tcp.recv(1)
                     if answer != self.FT_OK:
-                        raise
+                        return answer
                     self._tcp.send(buf)
                     answer = self._tcp.recv(1)
                     if answer != self.FT_OK:
-                        raise
+                        return answer
                     buf = None
                 elif sbs:
                     self._tcp.send(pack(

@@ -107,7 +107,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             killpg(self.pid(), 9)
         elif self.queue.is_contain(self.cur):
             self.queue.remove(self.cur)
-            
+
     def exception(self):
         warning('''Something stopped thread by rising exception,
             canceling remote job''')
@@ -146,7 +146,8 @@ class RemoteReporter(LogableThread, FileTransfer):
             # Attach local path to job
             self.cur.files[name] = lpath
         # Put job into the queue
-        self.inform('add', self.name[9:] + ': ' + basename(self.cur.files['ifile']))
+        self.inform(
+            'add', self.name[9:] + ': ' + basename(self.cur.files['ifile']))
         self.queue.put(self.cur)
         # While job still in queue, receiver must wait
         while self.queue.is_contain(self.cur):
