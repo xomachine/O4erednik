@@ -106,7 +106,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.tcp.close()
         if self.cur is self.curproc():
             killpg(self.pid(), 9)
-        elif self.queue.is_contain(self.cur):
+        elif self.cur in self.queue:
             self.queue.remove(self.cur)
         if self.eqdirs:
             for i in self.eqdirs.keys():
@@ -146,7 +146,7 @@ remote job has been canceled''')
             'add', self.name[9:] + ': ' + basename(self.cur.files['ifile']))
         self.queue.put(self.cur)
         # While job still in queue, receiver must wait
-        while self.queue.is_contain(self.cur):
+        while self.cur in self.queue:
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
             self.tcp.recv(1)
             sleep(10)  # OPTIMIZE: Find optimal sleep interval
@@ -345,7 +345,7 @@ class UDPServer(LogableThread):
         if params == 'current':
             killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
         elif params is int:
-            self.queue.remove(params)
+            self.queue.delete(params)
         else:
             all_threads = threads()
             for thread in all_threads:

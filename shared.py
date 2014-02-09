@@ -11,20 +11,17 @@ from fcntl import ioctl
 from struct import pack
 
 
-class Queue():
+class Queue(list):
 
     def __init__(self):
         super(Queue, self).__init__()
-        self._queue = []
         self._lock = Lock()
         self.fill = Event()
-        self.size = 0
 
     def put(self, obj):
         with self._lock:
-            self._queue.append(obj)
+            self.append(obj)
             self.fill.set()
-            self.size += 1
 
     def get(self, block=True):
         if not self.fill.isSet():
@@ -33,20 +30,19 @@ class Queue():
             else:
                 return None
         with self._lock:
-            obj = self._queue.pop(0)
-            self.size -= 1
-            if self.size == 0:
+            if len(self) == 1:
                 self.fill.clear()
-        return obj
+            return self.pop(0)
 
-    def is_contain(self, obj):
-        return True if obj in self._queue else False
+    def delele(self, index):
+        if 0 < index < len(self):
+            with self._lock:
+                del self[index]
 
-    def remove(self, index):
-        if index + 1 > self.size:
-            return
-        else:
-            self._queue.pop(index)
+    def remove(self, element):
+        if element in self:
+            with self._lock:
+                del self[self.index(element)]
 
 
 class Resources():
