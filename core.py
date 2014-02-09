@@ -7,7 +7,6 @@ from os import kill, killpg, makedirs
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep
-from uuid import uuid4
 from threading import enumerate as threads
 from shutil import rmtree
 
@@ -80,6 +79,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.name = 'reporter-' + peer
         # Binding shared objects
         self.cur = None
+        self.eqdirs = None
         self.inform = shared.inform
         self.queue = shared.queue
         self.tmp = shared.settings['Main']['Temporary directory']
@@ -108,9 +108,9 @@ class RemoteReporter(LogableThread, FileTransfer):
             killpg(self.pid(), 9)
         elif self.queue.is_contain(self.cur):
             self.queue.remove(self.cur)
-        if self.cur:
-            for i in self.cur.files.values():
-                rmtree(dirname(i), True)
+        if self.eqdirs:
+            for i in self.eqdirs.keys():
+                rmtree(i, True)
 
     def exception(self):
         warning('''Something stopped thread by rising exception,
@@ -125,27 +125,18 @@ remote job has been canceled''')
             error('Timeout while obtainig job')
             self.stop()
             return
-        # Detach remote paths from job
         self.cur = Job(*sjob)
-        rfiles = self.cur.files
-        self.cur.files = dict()
+        # Equivalents of local and remote dirs
+        self.eqdirs = dict()
         # Receive nessesary files and attach their with local paths to job
-        for name, rpath in rfiles.items():
-            rdir = dirname(rpath)  # Real path on remote host
-            fname = basename(rpath)  # File name will not be changed
-            if not rdir in rfiles.values():
-                # Create new random path on local host
-                rfiles[name] = rdir
-                lpath = self.tmp + '/' + str(uuid4()) + '/' + fname
-            else:
-                # Use existing path
-                lpath = dirname(
-                    self.cur.files.values()[rfiles.values().index(rdir)]
-                    ) + fname
-            # Request file from remote host by its real path
-            self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
+        for name, rpath in self.cur.files.items():
+            rdir = dirname(rpath)
+            ldir = self.tmp + '/' + hex(hash(rdir))[3:]
+            self.eqdirs[ldir] = rdir
+            lpath = ldir + '/' + basename(rpath)
             # Make directory
-            makedirs(dirname(lpath), exist_ok=True)
+            makedirs(ldir, exist_ok=True)
+            self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
             # Receive file to local path
             self.recvfile(lpath)
             # Attach local path to job
@@ -163,20 +154,16 @@ remote job has been canceled''')
         # If output file has defined, stream it while job is in process
         if 'ofile' in self.cur.files:
             if self.cur == self.curproc():
-            # Remove from local path self.tmp, and split it to fake dir and name
-                fname = self.cur.files['ofile'][len(self.tmp) + 1:].split(
-                    '/', 1)[1]
-                # Translate fake dir to remote real dir and
-                # request sending log step by step to remote real path
-                self.tcp.send(dumps([
-                    'S', rfiles['ofile'] + '/' + fname]).encode('utf-8'))
+                ldir, name = self.cur.files['ofile'].rsplit('/', 1)
+                # Split and translate path to remote dir
+                # Request sending log step by step to remote path
+                self.tcp.send(dumps(
+                    ['S', self.eqdirs[ldir] + '/' + name]).encode('utf-8'))
                 # Send log
                 if self.tcp.recv(1) != b'O':
                     error('Unexpected answer during log streaming')
                     raise
-                self.sendfile(
-                    self.cur.files['ofile'],
-                    sbs=True,
+                self.sendfile(self.cur.files['ofile'], sbs=True,
                     alive=lambda: True if self.cur is self.curproc() else False
                     )
         # Else just wait until job will be done
@@ -185,18 +172,18 @@ remote job has been canceled''')
                 self.tcp.send(dumps(['W', 10]).encode('utf-8'))
                 self.tcp.recv(1)
                 sleep(10)  # OPTIMIZE: Find optimal sleep interval
-        # After job completion sending results back
-        for name, lpath in self.cur.files.items():
-            # Get filename
-            fname = lpath[len(self.tmp) + 1:].split('/', 1)[1]
-            # Translate local dir to remote real dir,
+        # After job completion send results back
+        for lpath in self.cur.files.values():
+            # Split path
+            ldir, name = lpath.rsplit('/', 1)
+            # Translate local dir to remote dir,
             # request and send file
             self.tcp.send(dumps(
-                ['T', rfiles[name] + '/' + fname]).encode('utf-8'))
+                ['T', self.eqdirs[ldir] + '/' + name]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
                 raise
             self.sendfile(lpath)
-        # Closing connection
+        # Close connection
         self.tcp.send(dumps(['D', None]).encode('utf-8'))
         self.stop()
 
