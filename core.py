@@ -107,6 +107,11 @@ class RemoteReporter(LogableThread, FileTransfer):
             killpg(self.pid(), 9)
         elif self.queue.is_contain(self.cur):
             self.queue.remove(self.cur)
+            
+    def exception(self):
+        warning('''Something stopped thread by rising exception,
+            canceling remote job''')
+        self.stop()
 
     def run(self):
         # Receive job class as it is
@@ -141,21 +146,15 @@ class RemoteReporter(LogableThread, FileTransfer):
             # Attach local path to job
             self.cur.files[name] = lpath
         # Put job into the queue
-        self.inform('add', self.cur.files['ifile'])
+        self.inform('add', self.name[9:] + ': ' + basename(self.cur.files['ifile']))
         self.queue.put(self.cur)
         # While job still in queue, receiver must wait
         while self.queue.is_contain(self.cur):
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
-            try:
-                self.tcp.recv(1)
-            except:
-                self.stop()
-                return
-            else:
-                sleep(10)  # OPTIMIZE: Find optimal sleep interval
+            self.tcp.recv(1)
+            sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # Job leaved queue, lets search it in processor
         # If output file has defined, stream it while job is in process
-        #FIXME lambdas behaviour is undefined here
         if 'ofile' in self.cur.files:
             if self.cur == self.curproc():
             # Remove from local path self.tmp, and split it to fake dir and name
@@ -169,8 +168,7 @@ class RemoteReporter(LogableThread, FileTransfer):
                 # Send log
                 if self.tcp.recv(1) != b'O':
                     error('Unexpected answer during log streaming')
-                    self.stop()
-                    return
+                    raise
                 self.sendfile(
                     self.cur.files['ofile'],
                     sbs=True,
@@ -180,13 +178,8 @@ class RemoteReporter(LogableThread, FileTransfer):
         else:
             while self.cur == self.curproc():
                 self.tcp.send(dumps(['W', 10]).encode('utf-8'))
-                try:
-                    self.tcp.recv(1)
-                except:
-                    self.stop()
-                    return
-                else:
-                    sleep(10)  # OPTIMIZE: Find optimal sleep interval
+                self.tcp.recv(1)
+                sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion sending results back
         for name, lpath in self.cur.files.items():
             # Split local path to fake dir and filename
@@ -198,8 +191,7 @@ class RemoteReporter(LogableThread, FileTransfer):
                 reals[fakes.index(splited[1])] + '/' + splited[2]
                 ]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
-                self.stop()
-                return
+                raise
             self.sendfile(lpath)
         # Closing connection
         self.tcp.send(dumps(['D', None]).encode('utf-8'))
