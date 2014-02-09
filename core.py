@@ -9,6 +9,7 @@ from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep
 from uuid import uuid4
 from threading import enumerate as threads
+from shutil import rmtree
 
 
 class Job():
@@ -78,7 +79,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         super(RemoteReporter, self).__init__()
         self.name = 'reporter-' + peer
         # Binding shared objects
-        self.cur = Job()
+        self.cur = None
         self.inform = shared.inform
         self.queue = shared.queue
         self.tmp = shared.settings['Main']['Temporary directory']
@@ -107,10 +108,13 @@ class RemoteReporter(LogableThread, FileTransfer):
             killpg(self.pid(), 9)
         elif self.queue.is_contain(self.cur):
             self.queue.remove(self.cur)
+        if self.cur:
+            for i in self.cur.files.values():
+                rmtree(dirname(i), True)
 
     def exception(self):
         warning('''Something stopped thread by rising exception,
-            canceling remote job''')
+remote job has been canceled''')
         self.stop()
 
     def run(self):
@@ -126,17 +130,18 @@ class RemoteReporter(LogableThread, FileTransfer):
         rfiles = self.cur.files
         self.cur.files = dict()
         # Receive nessesary files and attach their with local paths to job
-        reals, fakes = [], []
         for name, rpath in rfiles.items():
             rdir = dirname(rpath)  # Real path on remote host
             fname = basename(rpath)  # File name will not be changed
-            if not rdir in reals:
-                # Create new random fake path on local host and binding
-                # with real
-                reals.append(rdir)
-                fakes.append(str(uuid4()))
-            # Generate path to file in local computer
-            lpath = self.tmp + '/' + fakes[reals.index(rdir)] + '/' + fname
+            if not rdir in rfiles.values():
+                # Create new random path on local host
+                rfiles[name] = rdir
+                lpath = self.tmp + '/' + str(uuid4()) + '/' + fname
+            else:
+                # Use existing path
+                lpath = dirname(
+                    self.cur.files.values()[rfiles.values().index(rdir)]
+                    ) + fname
             # Request file from remote host by its real path
             self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
             # Make directory
@@ -159,13 +164,12 @@ class RemoteReporter(LogableThread, FileTransfer):
         if 'ofile' in self.cur.files:
             if self.cur == self.curproc():
             # Remove from local path self.tmp, and split it to fake dir and name
-                splited = self.cur.files['ofile'][len(self.tmp):].split('/', 2)
+                fname = self.cur.files['ofile'][len(self.tmp) + 1:].split(
+                    '/', 1)[1]
                 # Translate fake dir to remote real dir and
                 # request sending log step by step to remote real path
                 self.tcp.send(dumps([
-                    'S',
-                    reals[fakes.index(splited[1])] + '/' + splited[2]
-                    ]).encode('utf-8'))
+                    'S', rfiles['ofile'] + '/' + fname]).encode('utf-8'))
                 # Send log
                 if self.tcp.recv(1) != b'O':
                     error('Unexpected answer during log streaming')
@@ -183,14 +187,12 @@ class RemoteReporter(LogableThread, FileTransfer):
                 sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion sending results back
         for name, lpath in self.cur.files.items():
-            # Split local path to fake dir and filename
-            splited = lpath[len(self.tmp):].split('/', 2)
-            # Translate fake dir to remote real dir,
+            # Get filename
+            fname = lpath[len(self.tmp) + 1:].split('/', 1)[1]
+            # Translate local dir to remote real dir,
             # request and send file
-            self.tcp.send(dumps([
-                'T',
-                reals[fakes.index(splited[1])] + '/' + splited[2]
-                ]).encode('utf-8'))
+            self.tcp.send(dumps(
+                ['T', rfiles[name] + '/' + fname]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
                 raise
             self.sendfile(lpath)
