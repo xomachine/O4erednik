@@ -78,10 +78,8 @@ class RemoteReporter(LogableThread, FileTransfer):
         super(RemoteReporter, self).__init__()
         self.name = 'reporter-' + peer
         # Binding shared objects
-        self.cur = None
         self.dir = shared.settings['Main']['Temporary directory'] + '/' + \
         hex(ord(urandom(1)))[2:]
-        self.inform = shared.inform
         self.queue = shared.queue
         # Current running job, not nessesary self.cur
         self.curproc = processor.getcur
@@ -101,21 +99,6 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.tcp.settimeout(10)
         self.setsocket(self.tcp)  # Setting socket for file transfer
         tcp.close()
-
-    def stop(self):
-        self.tcp.close()
-        if self.cur is self.curproc():
-            killpg(self.pid(), 9)
-        elif self.cur in self.queue:
-            self.queue.remove(self.cur)
-        rmtree(self.dir, True)
-
-    def exception(self):
-        warning('''Something stopped thread by rising exception,
-remote job has been canceled''')
-        self.stop()
-
-    def run(self):
         # Receive job class as it is
         try:
             sjob = loads(self.tcp.recv(4096).decode('utf-8'))
@@ -133,16 +116,36 @@ remote job has been canceled''')
             self.eqdirs[ldir] = rdir
             lpath = ldir + '/' + basename(rpath)
             # Make directory
-            makedirs(ldir, exist_ok=True)
-            self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
-            # Receive file to local path
-            self.recvfile(lpath)
+            try:
+                makedirs(ldir, exist_ok=True)
+                self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
+                # Receive file to local path
+                self.recvfile(lpath)
+            except:
+                error('Error while obtaining job files')
+                self.stop()
+                return
             # Attach local path to job
             self.cur.files[name] = lpath
         # Put job into the queue
-        self.inform(
+        shared.inform(
             'add', self.name[9:] + ': ' + basename(self.cur.files['ifile']))
         self.queue.put(self.cur)
+
+    def stop(self):
+        self.tcp.close()
+        if self.cur is self.curproc():
+            killpg(self.pid(), 9)
+        elif self.cur in self.queue:
+            self.queue.remove(self.cur)
+        rmtree(self.dir, True)
+
+    def exception(self):
+        warning('''Something stopped thread by rising exception,
+remote job has been canceled''')
+        self.stop()
+
+    def run(self):
         # While job still in queue, receiver must wait
         while self.cur in self.queue:
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
@@ -333,10 +336,9 @@ class UDPServer(LogableThread):
     # Search for possibility to share work
     def mLFF(self, params, peer):
         if self.processor.cur is None and not self.queue.fill.isSet():
-            self.udp.sendto(
-                dumps(['F', None]).encode('utf-8'),
-                (peer, 50000)
-                )
+            self.udp.sendto(dumps(['F',
+                    self.shared.settings['Main']['Number of processors']
+                    ]).encode('utf-8'), (peer, 50000))
 
     def mKill(self, params, peer):
         debug('Kill ' + str(params))
