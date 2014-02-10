@@ -44,6 +44,8 @@ class Module():
         # Preparation
         wlines = ["%nprocshared=" + self.nproc + "\n"]
         # Set number of processors by default
+        if not isfile(ifile):
+            return Popen(['sleep', '1'], preexec_fn=setsid)
         with open(ifile, 'r') as f:
             lines = f.readlines()
             chknum = 0
