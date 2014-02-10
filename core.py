@@ -3,7 +3,7 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error, warning
-from os import kill, killpg, makedirs
+from os import kill, killpg, makedirs, urandom
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep
@@ -79,10 +79,10 @@ class RemoteReporter(LogableThread, FileTransfer):
         self.name = 'reporter-' + peer
         # Binding shared objects
         self.cur = None
-        self.eqdirs = None
+        self.dir = shared.settings['Main']['Temporary directory'] + '/' + \
+        hex(ord(urandom(1)))[2:]
         self.inform = shared.inform
         self.queue = shared.queue
-        self.tmp = shared.settings['Main']['Temporary directory']
         # Current running job, not nessesary self.cur
         self.curproc = processor.getcur
         self.pid = processor.getpid
@@ -108,9 +108,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             killpg(self.pid(), 9)
         elif self.cur in self.queue:
             self.queue.remove(self.cur)
-        if self.eqdirs:
-            for i in self.eqdirs.keys():
-                rmtree(i, True)
+        rmtree(self.dir, True)
 
     def exception(self):
         warning('''Something stopped thread by rising exception,
@@ -131,7 +129,7 @@ remote job has been canceled''')
         # Receive nessesary files and attach their with local paths to job
         for name, rpath in self.cur.files.items():
             rdir = dirname(rpath)
-            ldir = self.tmp + '/' + hex(hash(rdir))[3:]
+            ldir = self.dir + '/' + hex(hash(rdir))[3:]
             self.eqdirs[ldir] = rdir
             lpath = ldir + '/' + basename(rpath)
             # Make directory
@@ -286,7 +284,7 @@ class UDPServer(LogableThread):
 
     def run(self):
         self.processor.start()
-        #self.processor.cur = True
+        #self.processor.cur = True  # For tests
         while self._alive:
             data, peer = self.udp.recvfrom(1024)
             debug((data, peer))
@@ -344,7 +342,7 @@ class UDPServer(LogableThread):
         debug('Kill ' + str(params))
         if params == 'current':
             killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
-        elif params is int:
+        elif type(params) is int:
             self.queue.delete(params)
         else:
             all_threads = threads()

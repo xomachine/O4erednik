@@ -34,7 +34,7 @@ class Queue(list):
                 self.fill.clear()
             return self.pop(0)
 
-    def delele(self, index):
+    def delete(self, index):
         if 0 < index < len(self):
             with self._lock:
                 del self[index]
