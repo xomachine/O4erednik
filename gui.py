@@ -4,7 +4,7 @@ from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
 from PyQt4.QtGui import QCursor, QFileDialog, QDialog, QWidget, QGroupBox
 from PyQt4.QtGui import QVBoxLayout, QIntValidator, QScrollArea
 from PyQt4.uic import loadUi
-from PyQt4.QtCore import QTextCodec, SIGNAL
+from PyQt4.QtCore import QTextCodec, SIGNAL, QTranslator, QLocale
 from os import _exit
 from os.path import basename, dirname
 from json import dumps
@@ -20,7 +20,6 @@ class SettingsDialog(QDialog):
         super(SettingsDialog, self).__init__()
         self.backend = backend
         loadUi('GUI/settings_form.ui', self)
-
         self.buildUp()
 
     def buildUp(self):
@@ -100,11 +99,11 @@ class SettingsDialog(QDialog):
                             )
                         )
                 else:
-                    groupbox.lineEdit.setText('Incorrect value')
+                    groupbox.toolButton.setShown(False)
+                    groupbox.lineEdit.setText(self.tr('Incorrect value'))
                     groupbox.lineEdit.Enable(False)
                 groupbox.setTitle(self.tr(key))
                 layout.addWidget(groupbox)
-
             if sect == 'Main':
                 self.tabWidget.insertTab(0, scroll, self.tr(sect))
             else:
@@ -126,38 +125,38 @@ class LeftMenu(QMenu):
         # Fill elements of menu
         self.addAction(
             _icons['add'],
-            self.tr('Add assignment')
+            self.tr('Add job')
             ).triggered.connect(self.DoAdd)
 
         self.addSeparator()
 
         self.working = self.addMenu(
             _icons['run'],
-            self.tr('In process')
+            self.tr('In process:')
             )
 
         self.queue = self.addMenu(
             _icons['wait'],
-            self.tr('Queue')
+            self.tr('Queue:')
             )
 
         self.recent = self.addMenu(
             _icons['free'],
-            self.tr('Recent')
+            self.tr('Recent:')
             )
 
     def DoAdd(self):
-        types = 'Select assignment type'
+        types = self.tr('Select job type')
         for sect in list(self.backend.shared.settings.keys()):
             if sect == 'Main':
                 continue
             types += ';;' + sect + '(*.*)'
         filename, jtype = QFileDialog.getOpenFileNameAndFilter(
-            None,
-            self.tr('Open file'),
+            self,
+            self.tr('Select job'),
             filter=types,
-            initialFilter='Select assignment type',
-            options=QFileDialog.DontUseNativeDialog
+#            options=QFileDialog.DontUseNativeDialog
+            # Not sure whether it nessesary
             )
         if filename:
             self.lastpath = dirname(filename)
@@ -199,7 +198,6 @@ class TrayIcon(QSystemTrayIcon):
         self.rmenu = RightMenu(backend)
         self.lmenu = LeftMenu(backend)
         self.settings = self.backend.shared.settings
-
         self.setContextMenu(self.rmenu)
         self.activated.connect(
             lambda x: self.lmenu.exec_(QCursor.pos())
@@ -223,11 +221,7 @@ class TrayIcon(QSystemTrayIcon):
     def sAdd(self, name, tooltip):
         elem = self.lmenu.queue.addMenu(_icons['wait'], name)
         elem.setToolTip(tooltip)
-        act = elem.addAction(
-            _icons['delete'],
-            self.tr('Cancel')
-            )
-        act.triggered.connect(
+        elem.addAction(_icons['delete'], self.tr('Cancel')).triggered.connect(
             lambda: self.backend.sendto(
                 dumps(
                     ['K', self.lmenu.queue.actions().index(elem.menuAction())]
@@ -237,7 +231,9 @@ class TrayIcon(QSystemTrayIcon):
 
     def sEmpty(self):
         self.setIcon(_icons['free'])
-        self.showMessage(self.tr('Status'), self.tr('The computer is free!'))
+        self.showMessage(
+            self.tr('Status'),
+            self.tr('The computer is free!'))
 
     def sStart(self, target, ofile, jtype):
         self.setIcon(_icons['run'])
@@ -296,11 +292,8 @@ class TrayIcon(QSystemTrayIcon):
         if mode == 'error':
             self.sAdd(menu.title(), menu.toolTip())
         else:
-            self.showMessage(
-                self.tr('Assignment completed'),
-                self.tr('The assignment ') +
-                menu.title() + self.tr(' is completed!')
-                )
+            self.showMessage(self.tr('Job completed!'),
+                self.tr('Job for ') + menu.title() + self.tr(' completed!'))
             delaction = menu.actions()[0]
             delaction.triggered.disconnect()
             delaction.setText(self.tr('Delete'))
@@ -323,7 +316,10 @@ class Backend():
             ('127.0.0.1', 50000)
             )
         self._app = QApplication([])
+        translator = QTranslator(self._app)
         self._app.setQuitOnLastWindowClosed(False)
+        translator.load(QLocale.system(), 'lang', '.', shared.path + '/langs')
+        self._app.installTranslator(translator)
         self.loadicons()
         QTextCodec.setCodecForTr(QTextCodec.codecForName("UTF-8"))
         self._tray = TrayIcon(self)

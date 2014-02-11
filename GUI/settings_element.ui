@@ -35,7 +35,7 @@
    <locale language="English" country="UnitedStates"/>
   </property>
   <property name="title">
-   <string>GroupBox</string>
+   <string notr="true">GroupBox</string>
   </property>
   <property name="alignment">
    <set>Qt::AlignCenter</set>
@@ -54,7 +54,7 @@
    <item>
     <widget class="QToolButton" name="toolButton">
      <property name="text">
-      <string>...</string>
+      <string notr="true">...</string>
      </property>
     </widget>
    </item>
