@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 ./__init__.py
+exec python3 ./__init__.py
