@@ -148,7 +148,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             self.cur.files[name] = lpath
         # Put job into the queue
         shared.inform(
-            'add', self.name[9:] + ': ' + basename(self.cur.files['ifile']))
+            'add', basename(self.cur.files['ifile']) + ' - ' + self.name[9:])
         self.queue.put(self.cur)
 
     def stop(self):

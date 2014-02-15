@@ -28,6 +28,7 @@ from os import _exit
 from os.path import basename, dirname
 from json import dumps
 from subprocess import Popen
+from time import strftime
 import icons
 
 _icons = dict()
@@ -311,6 +312,7 @@ class TrayIcon(QSystemTrayIcon):
         if mode == 'error':
             self.sAdd(menu.title(), menu.toolTip())
         else:
+            menu.setTitle(strftime("[%x %X] ") + menu.title())
             self.showMessage(self.tr('Job completed!'),
                 self.tr('Job for ') + menu.title() + self.tr(' completed!'))
             delaction = menu.actions()[0]
