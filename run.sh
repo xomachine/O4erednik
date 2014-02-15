@@ -17,4 +17,4 @@
 #
 #     Copyright 2014 Fomichev Dmitriy
 
-python3 ./__init__.py
+exec python3 ./__init__.py
