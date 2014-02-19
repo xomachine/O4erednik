@@ -82,7 +82,7 @@ class Processor(LogableThread):
                 process = self.workers[self.cur.type].do(self.cur)
                 self.pid = process.pid
                 process.wait()
-                self.inform('done', 'current')
+                self.inform('done', None)
                 if self.cur.id > 0:
                     try:
                         kill(self.cur.id, 9)
@@ -360,8 +360,8 @@ class UDPServer(LogableThread):
                     ]).encode('utf-8'), (peer, 50000))
 
     def mKill(self, params, peer):
-        debug('Kill ' + str(params))
-        if params == 'current':
+        debug('Kill "' + str(params) + '"')
+        if len(params) == 0:
             killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
         elif type(params) is int:
             self.queue.delete(params)

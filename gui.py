@@ -260,8 +260,8 @@ class TrayIcon(QSystemTrayIcon):
         fromqueue = self.lmenu.queue.actions()[0]
         self.lmenu.queue.removeAction(fromqueue)
         started = fromqueue.menu()
-        if target != 'current':
-            started.setTitle(target + ': ' + started.title())
+        if len(target) != 0:
+            started.setTitle(target + ':>' + started.title())
         started.setIcon(_icons['run'])
 
         started.actions()[0].triggered.disconnect()
@@ -310,11 +310,11 @@ class TrayIcon(QSystemTrayIcon):
         self.lmenu.working.removeAction(act)
         menu = act.menu()
         if mode == 'error':
-            self.sAdd(menu.title(), menu.toolTip())
+            self.sAdd(menu.title().split(':>', 1)[-1], menu.toolTip())
         else:
-            menu.setTitle(strftime("[%x %X] ") + menu.title())
             self.showMessage(self.tr('Job completed!'),
                 self.tr('Job for ') + menu.title() + self.tr(' completed!'))
+            menu.setTitle(strftime("[%x %X] ") + menu.title())
             delaction = menu.actions()[0]
             delaction.triggered.disconnect()
             delaction.setText(self.tr('Delete'))
@@ -387,7 +387,7 @@ class Backend():
     def sDone(self, func, target):
         self._tray.emit(SIGNAL('done(QString, QString)'), target, func)
 
-    def sStart(self, func, ofile, jtype, target='current'):
+    def sStart(self, func, ofile, jtype, target=None):
         self._tray.emit(
             SIGNAL('start(QString, QString, QString)'),
             target,
