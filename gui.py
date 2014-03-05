@@ -30,6 +30,7 @@ from json import dumps
 from subprocess import Popen
 from time import strftime
 import icons
+from logging import debug
 
 _icons = dict()
 
@@ -299,6 +300,7 @@ class TrayIcon(QSystemTrayIcon):
         self.lmenu.now[target] = started.menuAction()
 
     def sDone(self, target, mode):
+        debug('GUI done signal mode:' + mode + '; target:' + target)
         if target.isdigit():
             self.lmenu.queue.removeAction(
                 self.lmenu.queue.actions()[int(target)]
@@ -310,7 +312,9 @@ class TrayIcon(QSystemTrayIcon):
         self.lmenu.working.removeAction(act)
         menu = act.menu()
         if mode == 'error':
+            debug('Readding:' + target)
             self.sAdd(menu.title().split(':>', 1)[-1], menu.toolTip())
+            debug('Done')
         else:
             self.showMessage(self.tr('Job completed!'),
                 self.tr('Job for ') + menu.title() + self.tr(' completed!'))
