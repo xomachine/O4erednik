@@ -361,10 +361,11 @@ class UDPServer(LogableThread):
 
     def mKill(self, params, peer):
         debug('Kill "' + str(params) + '"')
-        if len(params) == 0:
-            killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
-        elif type(params) is int:
+        
+        if type(params) is int:
             self.queue.delete(params)
+        elif len(params) == 0:
+            killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
         else:
             all_threads = threads()
             for thread in all_threads:
