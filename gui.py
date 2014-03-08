@@ -109,9 +109,8 @@ class SettingsDialog(QDialog):
                         )
                 elif type(value) is list:
                     groupbox.toolButton.setShown(False)
-                    for item in self.backend.shared.settings[sect][tuple(key)](
-                        ):
-                        groupbox.comboBox.addItem(item[1])
+                    for item in self.backend.shared.settings[sect][tuple(key)]:
+                        groupbox.comboBox.addItem(str(item))
                     groupbox.comboBox.lineEdit().setText(value[0])
                     self.saveButton.clicked.connect(
                         lambda x, y=key, z=groupbox.comboBox, s=sect:
@@ -167,6 +166,7 @@ class LeftMenu(QMenu):
             )
 
     def DoAdd(self):
+        #TODO Separated window for selecting job
         types = self.tr('Select job type')
         for sect in list(self.backend.shared.settings.keys()):
             if sect == 'Main':

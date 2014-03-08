@@ -77,9 +77,10 @@ class Resources():
             format='[%(asctime)s] %(threadName)s: %(levelname)s, %(message)s',
             datefmt='%d.%m.%y %H:%M:%S'
             )
-        # Settings
+        # Settings init
         self.settings = dict()
         self.default()
+        # Settings load
         self.load()
         self.settings['Main']
         self.bcastaddr = lambda x: inet_ntoa(
@@ -95,11 +96,12 @@ class Resources():
         self.udpsocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.udpsocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         self.udpsocket.bind(('0.0.0.0', 50000))
-        # Queue
-        self.queue = Queue()
-        # Modules
+        # Modules init
         self.modules = dict()
         self.loadmodules()
+        # Queue
+        self.queue = Queue()
+
         # If programm was frozen...
         self.unfreeze()
         self.save()  # Just renew/create config
@@ -119,7 +121,7 @@ class Resources():
         ms['Text editor executable file'] = 'cat'
         ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
         ms['Temporary directory'] = '/tmp/queuer'
-        ms[tuple('Interface')] = if_nameindex
+        ms[tuple('Interface')] = list(zip(*if_nameindex()))[1]
         ms['Interface'] = ['lo']
         # To be continued...
 
