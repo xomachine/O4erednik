@@ -28,6 +28,7 @@ from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep
 from threading import enumerate as threads
 from shutil import rmtree
+from subprocess import Popen
 
 
 class Job():
@@ -42,12 +43,14 @@ class Job():
 
 class Processor(LogableThread):
 
-    def __init__(self, shared):
+    def __init__(self, shared, parent):
         super(Processor, self).__init__()
         self.name = 'Processor'
         self.cur = None
         self.pid = None
         # Binding shared objects
+        self.alloc = parent.alloc_nodes
+        self.free = parent.free_nodes
         self.queue = shared.queue
         self.bcastaddr = shared.bcastaddr
         self.ifname = shared.settings['Main']['Interface']
@@ -79,15 +82,26 @@ class Processor(LogableThread):
             if self.cur.type in self.workers:
                 self.inform('start', self.cur.files['ofile'], self.cur.type)
                 # Do job
+                if 'reqprocs' in self.cur.params:
+                    self.cur.params['nodelist'] = self.alloc(
+                        self.cur.params['reqprocs'])
                 process = self.workers[self.cur.type].do(self.cur)
                 self.pid = process.pid
                 process.wait()
+                if 'nodelist' in self.cur.params:
+                    self.free(self.cur.params['nodelist'])
                 self.inform('done', None)
                 if self.cur.id > 0:
                     try:
                         kill(self.cur.id, 9)
                     except:
                         pass
+            elif self.cur.type == 'lock':
+                self.inform('start', '', self.cur.type)
+                process = Popen(['sleep', '365d'])
+                self.pid = process.pid
+                process.wait()
+                self.inform('done', None)
             self.cur = None
 
 
@@ -291,7 +305,7 @@ class UDPServer(LogableThread):
         self.inform = shared.inform
         self.ifname = shared.settings['Main']['Interface']
         # Creating queue processor
-        self.processor = Processor(self.shared)
+        self.processor = Processor(self.shared, self)
         # Fill message-action dictonary
         self.fill_actions()
 
@@ -303,6 +317,38 @@ class UDPServer(LogableThread):
             'K': self.mKill,
             'S': self.mShare,
             }
+
+    def alloc_nodes(self, nprocs):
+        allocated = []
+        lst = []
+        procs = 0
+        # Replace FreeHandler to collect list of free computers
+        self.actions['F'] = lambda x, y, z: allocated.append([z, y])
+        self.udp.sendto(
+                dumps(['L', None]).encode('utf-8'),
+                (self.shared.bcastaddr(self.ifname), 50000)
+                )
+        sleep(1)
+        self.actions['F'] = self.mFree
+        # Select nprocs from list
+        for node, nproc in allocated:
+            if procs < nprocs:
+                procs += nproc
+                self.udp.sendto(
+                    dumps(['A',
+                        ['lock', 0, {'ifile': self.udp.getsockname()[0]}, {}]
+                        ]).encode('utf-8'),
+                    (node, 50000)
+                    )
+                lst.append([node, nproc])
+        return lst
+
+    def free_nodes(self, lst):
+        for node, nproc in lst:
+            self.udp.sendto(
+                dumps(['K', None]).encode('utf-8'),
+                (node, 50000)
+                )
 
     def run(self):
         self.processor.start()
@@ -323,7 +369,8 @@ class UDPServer(LogableThread):
     # Local addition to queue
     def mAdd(self, params, peer):
         job = Job(*params)
-        self.shared.modules[job.type].register(job)  # Register files for job
+        if job.type in self.shared.modules:
+            job = self.shared.modules[job.type].register(job)
         if self.processor.cur:  # Look For Free if processor is already busy
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
@@ -361,7 +408,6 @@ class UDPServer(LogableThread):
 
     def mKill(self, params, peer):
         debug('Kill "' + str(params) + '"')
-        
         if type(params) is int:
             self.queue.delete(params)
         elif len(params) == 0:
