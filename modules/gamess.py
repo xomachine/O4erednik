@@ -44,7 +44,7 @@ class Module():
                 error('''GAMESS jobs will not be executed!
 Please set kernel.shmmax>=44498944 and restart me!
 E.g.: sudo sysctl -w kernel.shmmax=6269961216''')
-                self.register = lambda x: False
+                raise
         environ['GMSPATH'] = self.gmspath
         environ['SCR'] = self.tmp
 
