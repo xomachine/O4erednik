@@ -30,10 +30,10 @@ class Module():
     def __init__(self, settings):
         if not 'gamess' in settings:
             settings['gamess'] = dict()
-            self.settings['gamess']['GAMESS executable file'] = ''
-            self.settings['gamess']['Kickoff executable file'] = ''
-            self.settings['gamess']['Visualiser executable file'] = ''
-            self.settings['gamess']['Kickoff type'] = ['socket']
+            settings['gamess']['GAMESS executable file'] = ''
+            settings['gamess']['Kickoff executable file'] = ''
+            settings['gamess']['Visualiser executable file'] = ''
+            settings['gamess']['Kickoff type'] = ['socket']
         self.gmsset = settings['gamess']
         self.gmsset[tuple('Kickoff type')] = ['socket', 'mpi']
         self.tmp = settings['Main']['Temporary directory']
