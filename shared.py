@@ -25,7 +25,7 @@ from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import sysconf, makedirs, listdir
-from logging import basicConfig, DEBUG as LEVEL
+from logging import basicConfig, warning, DEBUG as LEVEL
 from fcntl import ioctl
 from struct import pack
 
@@ -112,7 +112,10 @@ class Resources():
                 continue
             module = __import__(
                 'modules.' + mname[:-3], locals(), globals(), ['Module'])
-            self.modules[mname[:-3]] = module.Module(self.settings)
+            try:
+                self.modules[mname[:-3]] = module.Module(self.settings)
+            except ImportError:
+                warning("Module " + mname + " will not be loaded due to errors!")
 
     def default(self):
         if not 'Main' in self.settings:
