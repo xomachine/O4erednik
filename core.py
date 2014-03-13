@@ -244,7 +244,6 @@ class RemoteReceiver(LogableThread, FileTransfer):
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
-        self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
 
     def exception(self):
         warning(
@@ -275,6 +274,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
+                self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
                 self.tcp.send(b'O')
                 self.recvfile(param, lambda: True if self._alive else False)
             elif req == 'D':  # All Done, job completed
