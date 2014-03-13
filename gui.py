@@ -176,7 +176,7 @@ class LeftMenu(QMenu):
             self,
             self.tr('Select job'),
             filter=types,
-#            options=QFileDialog.DontUseNativeDialog
+            options=QFileDialog.DontUseNativeDialog
             # Not sure whether it nessesary
             )
         if filename:
