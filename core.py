@@ -26,9 +26,8 @@ from os import kill, killpg, makedirs, urandom
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep
-from threading import enumerate as threads
+from threading import Event, enumerate as threads
 from shutil import rmtree
-from subprocess import Popen
 
 
 class Job():
@@ -48,6 +47,8 @@ class Processor(LogableThread):
         self.name = 'Processor'
         self.cur = None
         self.pid = None
+        self.lock = Event()
+        self.lock.set()
         # Binding shared objects
         self.alloc = parent.alloc_nodes
         self.free = parent.free_nodes
@@ -98,9 +99,8 @@ class Processor(LogableThread):
                         pass
             elif self.cur.type == 'lock':
                 self.inform('start', '', self.cur.type)
-                process = Popen(['sleep', '365d'])
-                self.pid = process.pid
-                process.wait()
+                self.lock.clear()
+                self.lock.wait()
                 self.inform('done', None)
             self.cur = None
 
@@ -321,18 +321,22 @@ class UDPServer(LogableThread):
     def alloc_nodes(self, nprocs):
         allocated = []
         lst = []
+        debug("Allocating nodes, requested: " + str(nprocs))
         procs = 0
         # Replace FreeHandler to collect list of free computers
-        self.actions['F'] = lambda x, y, z: allocated.append([z, y])
+        self.actions['F'] = lambda x, y: allocated.append([y, x])
+        debug("Sending req for free nodes")
         self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
                 (self.shared.bcastaddr(self.ifname), 50000)
                 )
-        sleep(1)
+        sleep(2)
         self.actions['F'] = self.mFree
         # Select nprocs from list
+        debug("Found:" + str(allocated))
         for node, nproc in allocated:
             if procs < nprocs:
+                debug("Asking for " + node)
                 procs += nproc
                 self.udp.sendto(
                     dumps(['A',
@@ -341,12 +345,13 @@ class UDPServer(LogableThread):
                     (node, 50000)
                     )
                 lst.append([node, nproc])
+        debug("Registred" + str(lst))
         return lst
 
     def free_nodes(self, lst):
         for node, nproc in lst:
             self.udp.sendto(
-                dumps(['K', None]).encode('utf-8'),
+                dumps(['K', ""]).encode('utf-8'),
                 (node, 50000)
                 )
 
@@ -411,7 +416,10 @@ class UDPServer(LogableThread):
         if type(params) is int:
             self.queue.delete(params)
         elif len(params) == 0:
-            killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
+            if self.processor.lock.isSet():
+                killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
+            else:
+                self.processor.lock.set()
         else:
             all_threads = threads()
             for thread in all_threads:
