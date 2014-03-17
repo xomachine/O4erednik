@@ -98,7 +98,7 @@ class Processor(LogableThread):
                     except:
                         pass
             elif self.cur.type == 'lock':
-                self.inform('start', '', self.cur.type)
+                self.inform('start', self.cur.files['ifile'], self.cur.type)
                 self.lock.clear()
                 self.lock.wait()
                 self.inform('done', None)
