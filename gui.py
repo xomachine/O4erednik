@@ -166,7 +166,7 @@ class LeftMenu(QMenu):
             )
 
     def DoAdd(self):
-        #TODO Separated window for selecting job
+        #TODO: Separated window for selecting job
         types = self.tr('Select job type')
         for sect in list(self.backend.shared.settings.keys()):
             if sect == 'Main':
@@ -176,7 +176,7 @@ class LeftMenu(QMenu):
             self,
             self.tr('Select job'),
             filter=types,
-            options=QFileDialog.DontUseNativeDialog
+#            options=QFileDialog.DontUseNativeDialog
             # Not sure whether it nessesary
             )
         if filename:
@@ -257,16 +257,14 @@ class TrayIcon(QSystemTrayIcon):
             self.tr('The computer is free!'))
 
     def sStart(self, target, ofile, jtype):
-        debug("Setting icon")
         self.setIcon(_icons['run'])
-        debug("Extracting from queue")
         fromqueue = self.lmenu.queue.actions()[0]
         self.lmenu.queue.removeAction(fromqueue)
         started = fromqueue.menu()
         if len(target) != 0:
             started.setTitle(target + ':>' + started.title())
         started.setIcon(_icons['run'])
-        debug("Extracted with name:" + started.title())
+
         started.actions()[0].triggered.disconnect()
         started.actions()[0].triggered.connect(
                 lambda: self.backend.sendto(
@@ -292,7 +290,6 @@ class TrayIcon(QSystemTrayIcon):
                     ofile
                     ])
                 )
-        debug("Inserting to 'In process'")
         if self.lmenu.working.isEmpty:
             self.lmenu.working.addMenu(started)
         else:
@@ -300,35 +297,25 @@ class TrayIcon(QSystemTrayIcon):
                 self.lmenu.working.actions()[0],
                 started
                 )
-        debug("Recording to array, now array contains:")
         self.lmenu.now[target] = started.menuAction()
-        debug(str(self.lmenu.now))
 
     def sDone(self, target, mode):
         debug('GUI done signal mode:' + mode + '; target:' + target)
         if target.isdigit():
-            debug("Job in queue, removing...")
             self.lmenu.queue.removeAction(
                 self.lmenu.queue.actions()[int(target)]
                 )
-            return
         if not target in self.lmenu.now:
-            debug("Target '" + str(target) + "' is not in array.")
             return
-        debug("Extracting '" + str(target) + "' from 'In process'")
         act = self.lmenu.now[target]
         self.lmenu.now.pop(target, act)
         self.lmenu.working.removeAction(act)
-        debug("Extracted with title: " + act.title())
-        debug("Now array contains:")
-        debug(str(self.lmenu.now))
         menu = act.menu()
         if mode == 'error':
-            debug('Turning "' + act.title() + '" back to queue')
+            debug('Readding:' + target)
             self.sAdd(menu.title().split(':>', 1)[-1], menu.toolTip())
-            debug(act.title() + ' successfuly added to queue')
+            debug('Done')
         else:
-            debug("Pushing job to Recent")
             self.showMessage(self.tr('Job completed!'),
                 self.tr('Job for ') + menu.title() + self.tr(' completed!'))
             menu.setTitle(strftime("[%x %X] ") + menu.title())
@@ -339,7 +326,6 @@ class TrayIcon(QSystemTrayIcon):
                     lambda: self.lmenu.recent.removeAction(menu.menuAction())
                     )
             self.lmenu.recent.addMenu(menu)
-            debug("Job now in Recent")
 
 
 ###############################################################################

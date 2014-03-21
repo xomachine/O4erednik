@@ -61,9 +61,7 @@ class Module():
                     ls = buf[14:-1].split(',')
                     job.params['reqprocs'] = 0
                     for i in ls:
-                        if len(i) > 0:
-                            job.params['reqprocs'] += int(i.split(':')[1])
-                    #TODO: test linda support
+                        job.params['reqprocs'] += int(i.split(':')[1])
         return job
 
     def do(self, job):
@@ -80,10 +78,8 @@ class Module():
                 if buf.startswith('%lindaworkers'):
                     buf = "%lindaworkers="
                     for i in job.params['nodelist']:
-                        buf += i[0] + ':' + str(i[1]) + ','
-                    buf = buf + "\n"
-                    
-                    #TODO: test linda support
+                        buf += i[0] + ':' + i[1] + ','
+                    buf = buf[:-1] + "\n"
                 elif buf.startswith('%nprocshared'):
                     buf = '%nprocshared=' + self.nproc + "\n"
                     # Overwrite number of processors and remove default
