@@ -110,12 +110,12 @@ class Resources():
         for mname in listdir(dirname(__file__) + '/modules'):
             if mname == '__init__.py' or mname[-3:] != '.py':
                 continue
-            module = __import__(
-                'modules.' + mname[:-3], locals(), globals(), ['Module'])
             try:
-                self.modules[mname[:-3]] = module.Module(self.settings)
+                module = __import__('modules.' + mname[:-3], locals(),
+                    globals(), ['Module']).Module(self.settings)
+                self.modules[mname[:-3]] = module
             except ImportError:
-                warning("Module " + mname + " will not be loaded due to errors!")
+                warning("Errors occured while loading " + mname)
 
     def default(self):
         if not 'Main' in self.settings:
