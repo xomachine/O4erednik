@@ -314,7 +314,7 @@ class TrayIcon(QSystemTrayIcon):
             return
         if not target in self.lmenu.now:
             debug("Target '" + str(target) + "' is not in array.")
-              return
+            return
         debug("Extracting '" + str(target) + "' from 'In process'")
         act = self.lmenu.now[target]
         self.lmenu.now.pop(target, act)
