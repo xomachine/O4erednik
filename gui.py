@@ -319,7 +319,7 @@ class TrayIcon(QSystemTrayIcon):
         act = self.lmenu.now[target]
         self.lmenu.now.pop(target, act)
         self.lmenu.working.removeAction(act)
-        debug("Extracted with title: " + act.title())
+#        debug("Extracted with title: " + act.title())
         debug("Now array contains:")
         debug(str(self.lmenu.now))
         menu = act.menu()
