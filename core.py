@@ -277,13 +277,13 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
                 self.tcp.send(b'O')
                 self.recvfile(param, lambda: True if self._alive else False)
+		self.inform('done', self.peer)
             elif req == 'D':  # All Done, job completed
                 if self.job.id > 0:
                     try:
                         kill(self.job.id, 9)
                     except:
                         pass
-                self.inform('done', self.peer)
                 self.stop()
             else:
                 error('Unexpected response:' + req)
