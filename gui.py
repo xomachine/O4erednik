@@ -147,6 +147,11 @@ class LeftMenu(QMenu):
             _icons['add'],
             self.tr('Add job')
             ).triggered.connect(self.DoAdd)
+            
+        clact = self.addAction(
+            _icons['delete'],
+            self.tr('Clear recent')
+            )
 
         self.addSeparator()
 
@@ -164,6 +169,8 @@ class LeftMenu(QMenu):
             _icons['free'],
             self.tr('Recent:')
             )
+            
+        clact.triggered.connect(self.recent.clear)
 
     def DoAdd(self):
         #TODO: Separated window for selecting job
