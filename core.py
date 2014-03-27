@@ -274,6 +274,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
+            #FIXME: Change inform system to prevent 'done'ing new job like completed
                 self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
                 self.tcp.send(b'O')
                 self.recvfile(param, lambda: True if self._alive else False)
