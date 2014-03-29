@@ -22,17 +22,18 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error, warning
-from os import kill, killpg, makedirs, urandom
+from os import kill, killpg, makedirs
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
-from time import sleep
+from time import sleep, monotonic
 from threading import Event, enumerate as threads
 from shutil import rmtree
 
 
 class Job():
 
-    def __init__(self, jtype='dummy', uid=0, files=dict(), params=dict()):
+    def __init__(self, jtype='dummy', files=dict(), params=dict(),
+        uid=-int(monotonic() * 100)):
         super(Job, self).__init__()
         self.id = uid
         self.type = jtype
@@ -47,8 +48,8 @@ class Processor(LogableThread):
         self.name = 'Processor'
         self.cur = None
         self.pid = None
-        self.lock = Event()
-        self.lock.set()
+        self.unlocked = Event()
+        self.unlocked.set()
         # Binding shared objects
         self.alloc = parent.alloc_nodes
         self.free = parent.free_nodes
@@ -67,7 +68,7 @@ class Processor(LogableThread):
 
     def run(self):
         while self._alive:
-            if not self.queue.fill.isSet():
+            if len(self.queue) == 0:
                 # Send Free signal when queue is empty
                 self.udp.sendto(
                     dumps(['F', None]).encode('utf-8'),
@@ -75,33 +76,34 @@ class Processor(LogableThread):
                     )
                 self.inform('empty')
             self.cur = self.queue.get()
-            if self.queue.fill.isSet():  # Look For Free if queue still fill
+            if len(self.queue) > 0:  # Look For Free if queue still fill
                 self.udp.sendto(
                     dumps(['L', None]).encode('utf-8'),
                     (self.bcastaddr(self.ifname), 50000)
                     )
             if self.cur.type in self.workers:
-                self.inform('start', self.cur.files['ofile'], self.cur.type)
+                self.inform('start', self.cur)
                 # Do job
                 if 'reqprocs' in self.cur.params:
                     self.cur.params['nodelist'] = self.alloc(
                         self.cur.params['reqprocs'])
                 process = self.workers[self.cur.type].do(self.cur)
-                self.pid = process.pid
-                process.wait()
+                if process:
+                    self.pid = process.pid
+                    process.wait()
                 if 'nodelist' in self.cur.params:
                     self.free(self.cur.params['nodelist'])
-                self.inform('done', None)
+                self.inform('done', str(self.cur.id))
                 if self.cur.id > 0:
                     try:
                         kill(self.cur.id, 9)
                     except:
                         pass
             elif self.cur.type == 'lock':
-                self.inform('start', self.cur.files['ifile'], self.cur.type)
-                self.lock.clear()
-                self.lock.wait()
-                self.inform('done', None)
+                self.inform('start', self.cur)
+                self.unlocked.clear()
+                self.unlocked.wait()
+                self.inform('done', str(self.cur.id))
             self.cur = None
 
 
@@ -109,10 +111,10 @@ class RemoteReporter(LogableThread, FileTransfer):
 
     def __init__(self, processor, shared, peer):
         super(RemoteReporter, self).__init__()
-        self.name = 'reporter-' + peer
+        self.name = 'Reporter-' + peer
         # Binding shared objects
         self.dir = shared.settings['Main']['Temporary directory'] + '/' + \
-        hex(ord(urandom(1)))[2:]
+        hex(int(monotonic() * 100))[2:]
         self.queue = shared.queue
         # Current running job, not nessesary self.cur
         self.curproc = processor.getcur
@@ -139,11 +141,11 @@ class RemoteReporter(LogableThread, FileTransfer):
             error('Timeout while obtainig job')
             self.stop()
             return
-        self.cur = Job(*sjob)
+        self.job = Job(*sjob)
         # Equivalents of local and remote dirs
         self.eqdirs = dict()
         # Receive nessesary files and attach their with local paths to job
-        for name, rpath in self.cur.files.items():
+        for name, rpath in self.job.files.items():
             rdir = dirname(rpath)
             ldir = self.dir + '/' + hex(hash(rdir))[3:]
             self.eqdirs[ldir] = rdir
@@ -159,18 +161,17 @@ class RemoteReporter(LogableThread, FileTransfer):
                 self.stop()
                 return
             # Attach local path to job
-            self.cur.files[name] = lpath
+            self.job.files[name] = lpath
         # Put job into the queue
         shared.inform(
-            'add', basename(self.cur.files['ifile']) + ' - ' + self.name[9:])
-        self.queue.put(self.cur)
+            'add', self.job)
 
     def stop(self):
         self.tcp.close()
-        if self.cur is self.curproc():
+        if self.job is self.curproc():
             killpg(self.pid(), 9)
-        elif self.cur in self.queue:
-            self.queue.remove(self.cur)
+        elif self.job in self.queue:
+            self.queue.remove(self.job)
         rmtree(self.dir, True)
 
     def exception(self):
@@ -180,15 +181,15 @@ remote job has been canceled''')
 
     def run(self):
         # While job still in queue, receiver must wait
-        while self.cur in self.queue:
+        while self.job in self.queue:
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
             self.tcp.recv(1)
             sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # Job leaved queue, lets search it in processor
         # If output file has defined, stream it while job is in process
-        if 'ofile' in self.cur.files:
-            if self.cur == self.curproc():
-                ldir, name = self.cur.files['ofile'].rsplit('/', 1)
+        if 'ofile' in self.job.files:
+            if self.job == self.curproc():
+                ldir, name = self.job.files['ofile'].rsplit('/', 1)
                 # Split and translate path to remote dir
                 # Request sending log step by step to remote path
                 self.tcp.send(dumps(
@@ -197,17 +198,17 @@ remote job has been canceled''')
                 if self.tcp.recv(1) != b'O':
                     error('Unexpected answer during log streaming')
                     raise
-                self.sendfile(self.cur.files['ofile'], sbs=True,
-                    alive=lambda: True if self.cur is self.curproc() else False
+                self.sendfile(self.job.files['ofile'], sbs=True,
+                    alive=lambda: True if self.job is self.curproc() else False
                     )
         # Else just wait until job will be done
         else:
-            while self.cur == self.curproc():
+            while self.job == self.curproc():
                 self.tcp.send(dumps(['W', 10]).encode('utf-8'))
                 self.tcp.recv(1)
                 sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion send results back
-        for lpath in self.cur.files.values():
+        for lpath in self.job.files.values():
             # Split path
             ldir, name = lpath.rsplit('/', 1)
             # Translate local dir to remote dir,
@@ -226,7 +227,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
 
     def __init__(self, shared, peer):
         super(RemoteReceiver, self).__init__()
-        self.name = 'receiver-' + peer
+        self.name = 'Receiver-' + peer
         self.peer = peer
         # Binding shared objects
         self.queue = shared.queue
@@ -251,15 +252,15 @@ class RemoteReceiver(LogableThread, FileTransfer):
             exception, job returned into queue''')
         self.stop()
         self.queue.put(self.job)
-        self.inform('error', self.peer)
+        self.inform('error', str(self.job.id))
 
     def run(self):
         # Sending job object as it is
         jpack = dumps([
             self.job.type,
-            0,  # Id of remote job must be 0 to avoid spontanous process kills
             self.job.files,
-            self.job.params
+            self.job.params,
+            self.job.id
             ])
         self.tcp.send(jpack.encode('utf-8'))
         # Waiting for response from remote host
@@ -274,11 +275,10 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
-            #FIXME: Change inform system to prevent 'done'ing new job like completed
-                self.inform('start', self.job.files['ofile'], self.job.type, self.peer)
+                self.inform('start', self.job, self.peer)
                 self.tcp.send(b'O')
                 self.recvfile(param, lambda: True if self._alive else False)
-                self.inform('done', self.peer)
+                self.inform('done', str(self.job.id))
             elif req == 'D':  # All Done, job completed
                 if self.job.id > 0:
                     try:
@@ -288,7 +288,8 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.stop()
             else:
                 error('Unexpected response:' + req)
-                raise
+                self.exception()
+                return
         if self._alive is False:  # Sharing process end
             debug('Closing ' + self.name)
             self.tcp.close()
@@ -341,7 +342,7 @@ class UDPServer(LogableThread):
                 procs += nproc
                 self.udp.sendto(
                     dumps(['A',
-                        ['lock', 0, {'ifile': self.udp.getsockname()[0]}, {}]
+                        ['lock', {'ifile': self.udp.getsockname()[0]}, {}, 0]
                         ]).encode('utf-8'),
                     (node, 50000)
                     )
@@ -382,7 +383,7 @@ class UDPServer(LogableThread):
                 dumps(['L', None]).encode('utf-8'),
                 (self.shared.bcastaddr(self.ifname), 50000)
                 )
-        self.inform('add', job.files['ifile'])
+        self.inform('add', job)
         self.queue.put(job)
         if job.id > 0:
             kill(job.id, 19)
@@ -415,19 +416,23 @@ class UDPServer(LogableThread):
     def mKill(self, params, peer):
         debug('Kill "' + str(params) + '"')
         if type(params) is int:
+            debug("Removing from queue")
             self.queue.delete(params)
-        elif len(params) == 0:
-            if self.processor.lock.isSet():
+            debug(self.queue)
+            self.inform('done', params)
+        elif int(params) == self.processor.cur.id:
+            debug("self.processor.cur.id")
+            if self.processor.unlocked.isSet():
                 killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
             else:
-                self.processor.lock.set()
+                self.processor.unlocked.set()
         else:
             all_threads = threads()
             for thread in all_threads:
-                if thread.name == 'receiver-' + params:
-                    debug('Killing receiver-' + params)
+                if thread.name.startswith('Receiver'
+                ) and thread.job.uid == int(params):
+                    debug('Killing job ' + params)
                     thread.stop()
-        self.inform('done', str(params))
 
     def mShare(self, params, peer):
         RemoteReporter(self.processor, self.shared, peer).start()

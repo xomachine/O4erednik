@@ -35,26 +35,27 @@ class Queue(list):
     def __init__(self):
         super(Queue, self).__init__()
         self._lock = Lock()
-        self.fill = Event()
+        self._fill = Event()
 
     def put(self, obj):
         with self._lock:
             self.append(obj)
-            self.fill.set()
+            self._fill.set()
 
     def get(self, block=True):
-        if not self.fill.isSet():
+        with self._lock:
+            if len(self) == 0:
+                self._fill.clear()
+        if not self._fill.isSet():
             if block:
-                self.fill.wait()
+                self._fill.wait()
             else:
                 return None
         with self._lock:
-            if len(self) == 1:
-                self.fill.clear()
             return self.pop(0)
 
     def delete(self, index):
-        if 0 < index < len(self):
+        if 0 <= index < len(self):
             with self._lock:
                 del self[index]
 

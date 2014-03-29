@@ -147,7 +147,7 @@ class LeftMenu(QMenu):
             _icons['add'],
             self.tr('Add job')
             ).triggered.connect(self.DoAdd)
-            
+
         clact = self.addAction(
             _icons['delete'],
             self.tr('Clear recent')
@@ -169,7 +169,7 @@ class LeftMenu(QMenu):
             _icons['free'],
             self.tr('Recent:')
             )
-            
+
         clact.triggered.connect(self.recent.clear)
 
     def DoAdd(self):
@@ -189,7 +189,7 @@ class LeftMenu(QMenu):
         if filename:
             self.lastpath = dirname(filename)
             self.backend.sendto(
-                dumps(['A', [jtype[:-5], 0, {"ifile": filename}, {}]])
+                dumps(['A', [jtype[:-5], {"ifile": filename}, {}]])
                 )
 
 
@@ -239,7 +239,7 @@ class TrayIcon(QSystemTrayIcon):
         self.connect(self, SIGNAL('empty()'), self.sEmpty)
         self.connect(
             self,
-            SIGNAL('start(QString, QString, QString)'),
+            SIGNAL('start(QString, QString, QString, QString)'),
             self.sStart
             )
         self.connect(self, SIGNAL('done(QString, QString)'), self.sDone)
@@ -263,7 +263,7 @@ class TrayIcon(QSystemTrayIcon):
             self.tr('Status'),
             self.tr('The computer is free!'))
 
-    def sStart(self, target, ofile, jtype):
+    def sStart(self, target, ofile, jtype, uid):
         debug("Setting icon")
         self.setIcon(_icons['run'])
         debug("Extracting from queue")
@@ -277,7 +277,7 @@ class TrayIcon(QSystemTrayIcon):
         started.actions()[0].triggered.disconnect()
         started.actions()[0].triggered.connect(
                 lambda: self.backend.sendto(
-                    dumps(['K', target])
+                    dumps(['K', uid])
                     )
                 )
         if 'Visualiser executable file' in self.settings[jtype]:
@@ -290,7 +290,6 @@ class TrayIcon(QSystemTrayIcon):
                             ofile
                             ])
                         )
-        debug("Inserting to 'In process'")
         started.addAction(
             _icons['run'],
             self.tr('Open in text editor')
@@ -300,6 +299,7 @@ class TrayIcon(QSystemTrayIcon):
                     ofile
                     ])
                 )
+        debug("Inserting to 'In process'")
         if self.lmenu.working.isEmpty:
             self.lmenu.working.addMenu(started)
         else:
@@ -308,25 +308,25 @@ class TrayIcon(QSystemTrayIcon):
                 started
                 )
         debug("Recording to array, now array contains:")
-        self.lmenu.now[target] = started.menuAction()
+        self.lmenu.now[uid] = started.menuAction()
         debug(str(self.lmenu.now))
 
-    def sDone(self, target, mode):
-        debug('GUI done signal mode:' + mode + '; target:' + target)
-        if target.isdigit():
+    def sDone(self, mode, uid):
+        debug('GUI done signal mode:' + mode + '; id:' + uid)
+        if uid[0] == 'i':
+            uid = int(uid[1:])
             debug("Job in queue, removing...")
             self.lmenu.queue.removeAction(
-                self.lmenu.queue.actions()[int(target)]
+                self.lmenu.queue.actions()[uid]
                 )
             return
-        if not target in self.lmenu.now:
-            debug("Target '" + str(target) + "' is not in array.")
+        if not uid in self.lmenu.now:
+            debug("Id '" + str(uid) + "' is not in menu.")
             return
-        debug("Extracting '" + str(target) + "' from 'In process'")
-        act = self.lmenu.now[target]
-        self.lmenu.now.pop(target, act)
+        debug("Extracting '" + str(uid) + "' from 'In process'")
+        act = self.lmenu.now[uid]
+        self.lmenu.now.pop(uid, act)
         self.lmenu.working.removeAction(act)
-#        debug("Extracted with title: " + act.title())
         debug("Now array contains:")
         debug(str(self.lmenu.now))
         menu = act.menu()
@@ -402,20 +402,23 @@ class Backend():
 
 # Signals
 
-    def sAdd(self, func, filename):
+    def sAdd(self, func, job):
         self._tray.emit(
             SIGNAL('add(QString, QString)'),
-            basename(filename),
-            filename
+            basename(job.files['ifile']),
+            job.files['ifile']
             )
 
-    def sDone(self, func, target):
-        self._tray.emit(SIGNAL('done(QString, QString)'), target, func)
-
-    def sStart(self, func, ofile, jtype, target=None):
+    def sDone(self, func, uid):
+        if type(uid) is int:
+            uid = 'i' + str(uid)
         self._tray.emit(
-            SIGNAL('start(QString, QString, QString)'),
+            SIGNAL('done(QString, QString)'), func, str(uid))
+
+    def sStart(self, func, job, target=None):
+        self._tray.emit(
+            SIGNAL('start(QString, QString, QString, QString)'),
             target,
-            ofile,
-            jtype
-            )
+            job.files["ofile"],
+            job.type,
+            str(job.id))

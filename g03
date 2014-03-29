@@ -28,7 +28,7 @@ do
     files="$files, \"chkfile$n\": \"$i\""
     n=$(($n+1))
 done
-echo -e "[\"A\", [\"g03\", $PID, {$files }, {}]]" >/dev/udp/127.0.0.1/50000
+echo -e "[\"A\", [\"g03\", {$files }, {}, $PID]]" >/dev/udp/127.0.0.1/50000
 exec sleep 10s
 
 
