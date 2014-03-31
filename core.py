@@ -392,7 +392,7 @@ class UDPServer(LogableThread):
     def mFree(self, params, peer):
         if (
             self.processor.cur is None or
-            not self.queue.fill.isSet()
+            len(self.queue) == 0
             ):
             return
         self.udp.sendto(
