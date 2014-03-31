@@ -400,7 +400,7 @@ class UDPServer(LogableThread):
             (peer, 50000)
             )
         RemoteReceiver(self.shared, peer).start()
-        if self.queue.fill.isSet():  # Look For Free if queue still fill
+        if len(self.queue) > 0:  # Look For Free if queue still fill
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),
                 (self.shared.bcastaddr(self.ifname), 50000)
