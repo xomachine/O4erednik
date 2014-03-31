@@ -163,6 +163,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             # Attach local path to job
             self.job.files[name] = lpath
         # Put job into the queue
+        self.queue.put(self.job)
         shared.inform(
             'add', self.job)
 
