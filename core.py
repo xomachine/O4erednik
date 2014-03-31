@@ -408,7 +408,7 @@ class UDPServer(LogableThread):
 
     # Search for possibility to share work
     def mLFF(self, params, peer):
-        if self.processor.cur is None and not self.queue.fill.isSet():
+        if self.processor.cur is None and len(self.queue) == 0:
             self.udp.sendto(dumps(['F',
                     self.shared.settings['Main']['Number of processors']
                     ]).encode('utf-8'), (peer, 50000))
