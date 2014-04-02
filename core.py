@@ -33,8 +33,10 @@ from shutil import rmtree
 class Job():
 
     def __init__(self, jtype='dummy', files=dict(), params=dict(),
-        uid=-int(monotonic() * 100)):
+        uid=None):
         super(Job, self).__init__()
+        if uid is None:
+            uid=-int(monotonic() * 100)
         self.id = uid
         self.type = jtype
         self.files = files
@@ -246,6 +248,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
             return
         self.setsocket(self.tcp)
         self.job = self.queue.get()
+        debug("Job extracted: " + str(self.job.id))
 
     def exception(self):
         warning(
@@ -384,6 +387,7 @@ class UDPServer(LogableThread):
                 dumps(['L', None]).encode('utf-8'),
                 (self.shared.bcastaddr(self.ifname), 50000)
                 )
+        debug("Added job with id:" + str(job.id))
         self.inform('add', job)
         self.queue.put(job)
         if job.id > 0:
