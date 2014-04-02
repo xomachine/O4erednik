@@ -59,9 +59,10 @@ class Module():
                     chknum += 1
                 elif buf.startswith('%lindaworkers'):
                     ls = buf[14:-1].split(',')
-                    job.params['reqprocs'] = 0
-                    for i in ls:
-                        job.params['reqprocs'] += int(i.split(':')[1])
+                    if ":" in ls:
+                        job.params['reqprocs'] = 0
+                        for i in ls:
+                            job.params['reqprocs'] += int(i.split(':')[1])
         return job
 
     def do(self, job):
@@ -77,8 +78,9 @@ class Module():
             for buf in lines:
                 if buf.startswith('%lindaworkers'):
                     buf = "%lindaworkers="
-                    for i in job.params['nodelist']:
-                        buf += i[0] + ':' + i[1] + ','
+                    if "nodelist" in job.params:
+                        for i in job.params['nodelist']:
+                            buf += i[0] + ':' + i[1] + ','
                     buf = buf[:-1] + "\n"
                 elif buf.startswith('%nprocshared'):
                     buf = '%nprocshared=' + self.nproc + "\n"
