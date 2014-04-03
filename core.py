@@ -425,7 +425,7 @@ class UDPServer(LogableThread):
             self.queue.delete(params)
             debug(self.queue)
             self.inform('done', params)
-        elif int(params) == self.processor.cur.id:
+        elif self.processor.cur and int(params) == self.processor.cur.id:
             debug("self.processor.cur.id")
             if self.processor.unlocked.isSet():
                 killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
