@@ -435,7 +435,7 @@ class UDPServer(LogableThread):
             all_threads = threads()
             for thread in all_threads:
                 if thread.name.startswith('Receiver'
-                ) and thread.job.uid == int(params):
+                ) and thread.job.id == int(params):
                     debug('Killing job ' + params)
                     thread.stop()
 
