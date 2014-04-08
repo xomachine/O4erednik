@@ -36,7 +36,7 @@ class Job():
         uid=None):
         super(Job, self).__init__()
         if uid is None:
-            uid=-int(monotonic() * 100)
+            uid = -int(monotonic() * 100)
         self.id = uid
         self.type = jtype
         self.files = files
@@ -48,10 +48,14 @@ class Processor(LogableThread):
     def __init__(self, shared, parent):
         super(Processor, self).__init__()
         self.name = 'Processor'
-        self.cur = None
         self.pid = None
         self.unlocked = Event()
-        self.unlocked.set()
+        if shared.settings['Main']['Client mode']:
+            self.cur = Job()
+            self._alive = False
+        else:
+            self.unlocked.set()
+            self.cur = None
         # Binding shared objects
         self.alloc = parent.alloc_nodes
         self.free = parent.free_nodes
@@ -426,7 +430,7 @@ class UDPServer(LogableThread):
             debug(self.queue)
             self.inform('done', params)
         elif self.processor.cur and int(params) == self.processor.cur.id:
-            debug("self.processor.cur.id")
+            debug("Stopping current job")
             if self.processor.unlocked.isSet():
                 killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
             else:

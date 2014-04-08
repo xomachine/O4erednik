@@ -127,6 +127,7 @@ class Resources():
         ms['Temporary directory'] = '/tmp/queuer'
         ms[tuple('Interface')] = list(zip(*if_nameindex()))[1]
         ms['Interface'] = ['lo']
+        ms['Client mode'] = False
         # To be continued...
 
     def save(self):
