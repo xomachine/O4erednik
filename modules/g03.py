@@ -58,10 +58,11 @@ class Module():
                     job.files['chkfile' + str(chknum)] = cur
                     chknum += 1
                 elif buf.startswith('%lindaworkers'):
+                    print("Linda string found")
                     ls = buf[14:-1].split(',')
-                    if ":" in ls:
-                        job.params['reqprocs'] = 0
-                        for i in ls:
+                    job.params['reqprocs'] = 0
+                    for i in ls:
+                        if ':' in i:
                             job.params['reqprocs'] += int(i.split(':')[1])
         return job
 
@@ -81,7 +82,7 @@ class Module():
                     if "nodelist" in job.params:
                         for i in job.params['nodelist']:
                             buf += i[0] + ':' + i[1] + ','
-                    buf = buf[:-1] + "\n"
+                    buf = buf + "\n"
                 elif buf.startswith('%nprocshared'):
                     buf = '%nprocshared=' + self.nproc + "\n"
                     # Overwrite number of processors and remove default
