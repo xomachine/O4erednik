@@ -21,14 +21,17 @@
 from logging import error
 from os.path import isfile, dirname, basename
 from subprocess import Popen
-from os import setsid, environ, makedirs, name as osname
+from os import environ, makedirs, name as osname
 from shutil import copyfile
+
+if osname == 'posix':
+    from os import setsid
 
 
 class Module():
 
     def __init__(self, settings):
-        if osname == 'posix':
+        if osname != 'posix':
             error("GAMESS module is currently support only posix system")
             raise ImportError
         if not 'gamess' in settings:
@@ -42,7 +45,6 @@ class Module():
         self.tmp = settings['Main']['Temporary directory']
         self.nproc = str(settings['Main']['Number of processors'])
         self.gmspath = dirname(self.gmsset['GAMESS executable file'])
-        
         with open('/proc/sys/kernel/shmmax', 'r') as f:
             if int(f.read()) < 44498944:
                 error('''GAMESS jobs will not be executed!
@@ -99,7 +101,8 @@ E.g.: sudo sysctl -w kernel.shmmax=6269961216''')
             self.gmsset['Kickoff executable file'] + ' -n ' +\
             self.nproc + ' ' + nodes +\
             self.gmsset['GAMESS executable file'] + ' > ' +\
-            job.files['ofile']  #TODO: add moving trj, punch etc files from scr dir
+            job.files['ofile']
+            #TODO: add moving trj, punch etc files from scr dir
         # Execution
         proc = Popen(
             [cmd],

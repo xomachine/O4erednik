@@ -364,7 +364,8 @@ class Backend():
         self._app = QApplication([])
         translator = QTranslator(self._app)
         self._app.setQuitOnLastWindowClosed(False)
-        translator.load(QLocale.system(), 'lang', '.', shared.path + sep + 'langs')
+        translator.load(
+            QLocale.system(), 'lang', '.', shared.path + sep + 'langs')
         self._app.installTranslator(translator)
         self.loadicons()
         QTextCodec.setCodecForTr(QTextCodec.codecForName("UTF-8"))

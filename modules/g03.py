@@ -20,8 +20,10 @@
 
 
 from os.path import isdir, isfile, dirname
-from os import setsid, environ
+from os import name as osname, environ
 from subprocess import Popen
+if osname == 'posix':
+    from os import setsid
 
 # Gaussian 03 worker
 

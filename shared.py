@@ -20,17 +20,18 @@
 
 
 from threading import Lock, Event
-from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, if_nameindex
+from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP
 from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
-from os import sysconf, makedirs, listdir, sep, curdir, name as osname
+from os import makedirs, listdir, sep, curdir, name as osname
 from logging import basicConfig, warning, DEBUG as LEVEL
 from struct import pack
 if osname == 'posix':
     from fcntl import ioctl
-elif osname == 'nt':
-    from socket import ioctl
+    from os import sysconf
+    from socket import if_nameindex
+
 
 class Queue(list):
 
@@ -94,7 +95,7 @@ class Resources():
                     )[20:24]
                 )
         elif osname == 'nt':
-            self.bcastaddr = lambda x: "0.0.0.0"
+            self.bcastaddr = lambda x: "<broadcast>"
         # Environment
         makedirs(self.settings['Main']['Temporary directory'], exist_ok=True)
         # Socket
@@ -131,11 +132,12 @@ class Resources():
         ms['Number of processors'] = 1
         ms['Interface'] = 'Does not matter'
         ms['Temporary directory'] = curdir + sep + 'tmp'
+        ms['Client mode'] = True
         if osname == 'posix':
             ms[tuple('Interface')] = list(zip(*if_nameindex()))[1]
             ms['Interface'] = ['lo']
             ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
-        ms['Client mode'] = False
+            ms['Client mode'] = False
         # To be continued...
 
     def save(self):

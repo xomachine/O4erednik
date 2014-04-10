@@ -22,12 +22,14 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error, warning
-from os import kill, killpg, makedirs, sep
+from os import kill, name as osname, makedirs, sep
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep, monotonic
 from threading import Event, enumerate as threads
 from shutil import rmtree
+if osname == 'posix':
+    from os import killpg
 
 
 class Job():
