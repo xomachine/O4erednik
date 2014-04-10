@@ -24,11 +24,13 @@ from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP, if_nameindex
 from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
-from os import sysconf, makedirs, listdir
+from os import sysconf, makedirs, listdir, sep, curdir, name as osname
 from logging import basicConfig, warning, DEBUG as LEVEL
-from fcntl import ioctl
 from struct import pack
-
+if osname == 'posix':
+    from fcntl import ioctl
+elif osname == 'nt':
+    from socket import ioctl
 
 class Queue(list):
 
@@ -73,7 +75,7 @@ class Resources():
         self.path = dirname(realpath(__file__))
         # Logging
         basicConfig(
-            filename=self.path + '/queuer.log',
+            filename=self.path + sep + 'queuer.log',
             level=LEVEL,
             format='[%(asctime)s] %(threadName)s: %(levelname)s, %(message)s',
             datefmt='%d.%m.%y %H:%M:%S'
@@ -84,12 +86,15 @@ class Resources():
         # Settings load
         self.load()
         self.settings['Main']
-        self.bcastaddr = lambda x: inet_ntoa(
-            ioctl(
-                socket(AF_INET, SOCK_DGRAM), 0x8919, pack(  # SIOCGIFBRDADDR
-                    '256s', ''.join(x).encode('utf-8'))
-                )[20:24]
-            )
+        if osname == 'posix':
+            self.bcastaddr = lambda x: inet_ntoa(
+                ioctl(
+                    socket(AF_INET, SOCK_DGRAM), 0x8919, pack(  # SIOCGIFBRDADDR
+                        '256s', ''.join(x).encode('utf-8'))
+                    )[20:24]
+                )
+        elif osname == 'nt':
+            self.bcastaddr = lambda x: "0.0.0.0"
         # Environment
         makedirs(self.settings['Main']['Temporary directory'], exist_ok=True)
         # Socket
@@ -108,7 +113,7 @@ class Resources():
         self.save()  # Just renew/create config
 
     def loadmodules(self):
-        for mname in listdir(dirname(__file__) + '/modules'):
+        for mname in listdir(dirname(__file__) + sep + 'modules'):
             if mname == '__init__.py' or mname[-3:] != '.py':
                 continue
             try:
@@ -122,22 +127,25 @@ class Resources():
         if not 'Main' in self.settings:
             self.settings['Main'] = dict()
         ms = self.settings['Main']
-        ms['Text editor executable file'] = 'cat'
-        ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
-        ms['Temporary directory'] = '/tmp/queuer'
-        ms[tuple('Interface')] = list(zip(*if_nameindex()))[1]
-        ms['Interface'] = ['lo']
+        ms['Text editor executable file'] = ''
+        ms['Number of processors'] = 1
+        ms['Interface'] = 'Does not matter'
+        ms['Temporary directory'] = curdir + sep + 'tmp'
+        if osname == 'posix':
+            ms[tuple('Interface')] = list(zip(*if_nameindex()))[1]
+            ms['Interface'] = ['lo']
+            ms['Number of processors'] = sysconf('SC_NPROCESSORS_ONLN')
         ms['Client mode'] = False
         # To be continued...
 
     def save(self):
-        with open(self.path + '/queuer.conf', 'w') as f:
+        with open(self.path + sep + 'queuer.conf', 'w') as f:
             dump(self.settings, f, indent=4, skipkeys=True)
 
     def load(self):
-        if not isfile(self.path + '/queuer.conf'):
+        if not isfile(self.path + sep + 'queuer.conf'):
             return
-        with open(self.path + '/queuer.conf', 'r') as f:
+        with open(self.path + sep + 'queuer.conf', 'r') as f:
             loaded = load(f)
             for key, value in loaded.items():
                 if key in self.settings:
@@ -152,7 +160,7 @@ class Resources():
 
 # Used to unfreeze shared resources after programm restarted
     def unfreeze(self):
-        if not isfile(self.path + '/frozen.dat'):
+        if not isfile(self.path + sep + 'frozen.dat'):
             return
 
 # Stub informer, will be replaced by gui informer

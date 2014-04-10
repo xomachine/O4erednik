@@ -22,7 +22,7 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error, warning
-from os import kill, killpg, makedirs
+from os import kill, killpg, makedirs, sep
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep, monotonic
@@ -119,7 +119,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         super(RemoteReporter, self).__init__()
         self.name = 'Reporter-' + peer
         # Binding shared objects
-        self.dir = shared.settings['Main']['Temporary directory'] + '/' + \
+        self.dir = shared.settings['Main']['Temporary directory'] + sep + \
         hex(int(monotonic() * 100))[2:]
         self.queue = shared.queue
         # Current running job, not nessesary self.cur
@@ -153,9 +153,9 @@ class RemoteReporter(LogableThread, FileTransfer):
         # Receive nessesary files and attach their with local paths to job
         for name, rpath in self.job.files.items():
             rdir = dirname(rpath)
-            ldir = self.dir + '/' + hex(hash(rdir))[3:]
+            ldir = self.dir + sep + hex(hash(rdir))[3:]
             self.eqdirs[ldir] = rdir
-            lpath = ldir + '/' + basename(rpath)
+            lpath = ldir + sep + basename(rpath)
             # Make directory
             try:
                 makedirs(ldir, exist_ok=True)
@@ -196,11 +196,11 @@ remote job has been canceled''')
         # If output file has defined, stream it while job is in process
         if 'ofile' in self.job.files:
             if self.job == self.curproc():
-                ldir, name = self.job.files['ofile'].rsplit('/', 1)
+                ldir, name = self.job.files['ofile'].rsplit(sep, 1)
                 # Split and translate path to remote dir
                 # Request sending log step by step to remote path
                 self.tcp.send(dumps(
-                    ['S', self.eqdirs[ldir] + '/' + name]).encode('utf-8'))
+                    ['S', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
                 # Send log
                 if self.tcp.recv(1) != b'O':
                     error('Unexpected answer during log streaming')
@@ -217,11 +217,11 @@ remote job has been canceled''')
         # After job completion send results back
         for lpath in self.job.files.values():
             # Split path
-            ldir, name = lpath.rsplit('/', 1)
+            ldir, name = lpath.rsplit(sep, 1)
             # Translate local dir to remote dir,
             # request and send file
             self.tcp.send(dumps(
-                ['T', self.eqdirs[ldir] + '/' + name]).encode('utf-8'))
+                ['T', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
                 raise
             self.sendfile(lpath)

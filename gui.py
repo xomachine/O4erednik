@@ -24,7 +24,7 @@ from PyQt4.QtGui import QCursor, QFileDialog, QDialog, QWidget, QGroupBox
 from PyQt4.QtGui import QVBoxLayout, QIntValidator, QScrollArea
 from PyQt4.uic import loadUi
 from PyQt4.QtCore import QTextCodec, SIGNAL, QTranslator, QLocale
-from os import _exit
+from os import _exit, sep
 from os.path import basename, dirname
 from json import dumps
 from subprocess import Popen
@@ -40,7 +40,7 @@ class SettingsDialog(QDialog):
     def __init__(self, backend):
         super(SettingsDialog, self).__init__()
         self.backend = backend
-        loadUi('GUI/settings_form.ui', self)
+        loadUi('GUI' + sep + 'settings_form.ui', self)
         self.buildUp()
 
     def buildUp(self):
@@ -52,7 +52,7 @@ class SettingsDialog(QDialog):
                 if not type(key) is str:
                     continue
                 groupbox = QGroupBox(widget)
-                loadUi('GUI/settings_element.ui', groupbox)
+                loadUi('GUI' + sep + 'settings_element.ui', groupbox)
                 if type(value) is str:
                     groupbox.comboBox.lineEdit().setText(value)
                     if key.endswith('directory'):
@@ -364,7 +364,7 @@ class Backend():
         self._app = QApplication([])
         translator = QTranslator(self._app)
         self._app.setQuitOnLastWindowClosed(False)
-        translator.load(QLocale.system(), 'lang', '.', shared.path + '/langs')
+        translator.load(QLocale.system(), 'lang', '.', shared.path + sep + 'langs')
         self._app.installTranslator(translator)
         self.loadicons()
         QTextCodec.setCodecForTr(QTextCodec.codecForName("UTF-8"))
