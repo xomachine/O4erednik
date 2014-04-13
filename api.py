@@ -71,6 +71,8 @@ class FileTransfer():
 
     def sendfile(self, path, blocksize=1024, sbs=False, alive=lambda: True,
         sleeptime=10):
+        if sbs and alive() and not isfile(path):
+            sleep(sleeptime - 2)
         if not isfile(path):
             self._tcp.send(pack('c?', self.FT_ERROR, sbs))
             return
