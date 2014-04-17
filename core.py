@@ -380,7 +380,7 @@ class UDPServer(LogableThread):
                 continue
             if mtype in self.actions:
                 self.actions[mtype](params, peer[0])
-                #TODO: display hostnames instead ips with windows compability
+                #TODO: display hostnames instead ips with windows compatibility
 
 # Actions
 
