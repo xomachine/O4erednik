@@ -24,7 +24,7 @@ from json import loads, dumps
 from logging import debug, error, warning
 from os import kill, name as osname, makedirs, sep
 from os.path import dirname, basename
-from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
+from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
 from time import sleep, monotonic
 from threading import Event, enumerate as threads
 from shutil import rmtree
@@ -379,7 +379,8 @@ class UDPServer(LogableThread):
                 debug('It is not a proper request')
                 continue
             if mtype in self.actions:
-                self.actions[mtype](params, gethostbyaddr(peer[0])[0])
+                self.actions[mtype](params, peer[0])
+                #TODO: display hostnames instead ips with windows compability
 
 # Actions
 
