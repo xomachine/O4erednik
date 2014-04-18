@@ -24,7 +24,7 @@ from json import loads, dumps
 from logging import debug, error, warning
 from os import kill, name as osname, makedirs, sep
 from os.path import dirname, basename
-from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout
+from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep, monotonic
 from threading import Event, enumerate as threads
 from shutil import rmtree
@@ -119,7 +119,7 @@ class RemoteReporter(LogableThread, FileTransfer):
 
     def __init__(self, processor, shared, peer):
         super(RemoteReporter, self).__init__()
-        self.name = 'Reporter-' + peer
+        self.name = 'Reporter-' + gethostbyaddr(peer)[0]
         # Binding shared objects
         self.dir = shared.settings['Main']['Temporary directory'] + sep + \
         hex(int(monotonic() * 100))[2:]
@@ -236,8 +236,8 @@ class RemoteReceiver(LogableThread, FileTransfer):
 
     def __init__(self, shared, peer):
         super(RemoteReceiver, self).__init__()
-        self.name = 'Receiver-' + peer
-        self.peer = peer
+        self.peer = gethostbyaddr(peer)[0]
+        self.name = 'Receiver-' + self.peer
         # Binding shared objects
         self.queue = shared.queue
         self.inform = shared.inform
@@ -249,7 +249,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         try:
             self.tcp.connect((peer, 50000))
         except:
-            error('Unable to connect remote worker ' + peer)
+            error('Unable to connect remote worker ' + self.peer)
             self.stop()
             return
         self.setsocket(self.tcp)
@@ -380,7 +380,6 @@ class UDPServer(LogableThread):
                 continue
             if mtype in self.actions:
                 self.actions[mtype](params, peer[0])
-                #TODO: display hostnames instead ips with windows compatibility
 
 # Actions
 
