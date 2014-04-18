@@ -60,7 +60,6 @@ class Module():
                     job.files['chkfile' + str(chknum)] = cur
                     chknum += 1
                 elif buf.startswith('%lindaworkers'):
-                    print("Linda string found")
                     ls = buf[14:-1].split(',')
                     job.params['reqprocs'] = 0
                     for i in ls:
