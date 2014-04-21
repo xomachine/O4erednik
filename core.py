@@ -352,7 +352,7 @@ class UDPServer(LogableThread):
                 procs += nproc
                 self.udp.sendto(
                     dumps(['A',
-                        ['lock', {'ifile': self.udp.getsockname()[0]}, {}, 0]
+                        ['lock', {'ifile': self.udp.getsockname()[0], 'ofile': ""}, {}, 0]
                         ]).encode('utf-8'),
                     (node, 50000)
                     )
