@@ -82,7 +82,7 @@ class Module():
                     buf = "%lindaworkers="
                     if "nodelist" in job.params:
                         for i in job.params['nodelist']:
-                            buf += i[0] + ':' + i[1] + ','
+                            buf += i[0] + ':' + str(i[1]) + ','
                     buf = buf + "\n"
                 elif buf.startswith('%nprocshared'):
                     buf = '%nprocshared=' + self.nproc + "\n"
