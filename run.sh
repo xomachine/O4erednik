@@ -25,4 +25,4 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 cd $DIR
-exec python3 $DIR/__init__.py
+exec python3 $DIR/__init__.py >> $DIR/gui.log
