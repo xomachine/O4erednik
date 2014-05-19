@@ -32,7 +32,7 @@ class Module():
 
     def __init__(self, settings):
         if osname != 'posix':
-            error("GAMESS module is currently support only posix system")
+            error("GAMESS module is currently supported only on posix system")
             raise ImportError
         if not 'gamess' in settings:
             settings['gamess'] = dict()
