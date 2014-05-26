@@ -365,7 +365,7 @@ class UDPServer(LogableThread):
     def free_nodes(self, lst):
         for node, nproc in lst:
             self.udp.sendto(
-                dumps(['K', ""]).encode('utf-8'),
+                dumps(['K', "lock"]).encode('utf-8'),
                 (node, 50000)
                 )
 
@@ -433,7 +433,7 @@ class UDPServer(LogableThread):
             self.queue.delete(params)
             debug(self.queue)
             self.inform('done', params)
-        elif self.processor.cur and int(params) == self.processor.cur.id:
+        elif self.processor.cur and (int(params) == self.processor.cur.id or params == "lock"):
             debug("Stopping current job")
             if self.processor.unlocked.isSet():
                 killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
