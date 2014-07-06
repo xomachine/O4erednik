@@ -433,7 +433,8 @@ class UDPServer(LogableThread):
             self.queue.delete(params)
             debug(self.queue)
             self.inform('done', params)
-        elif self.processor.cur and (int(params) == self.processor.cur.id or params == "lock"):
+        elif self.processor.cur and (
+            params == "lock" or params == str(self.processor.cur.id)):
             debug("Stopping current job")
             if self.processor.unlocked.isSet():
                 killpg(self.processor.pid, 9)  # Kill current task with SIGKILL
