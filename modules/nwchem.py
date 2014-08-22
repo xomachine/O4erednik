@@ -22,6 +22,7 @@ from logging import error
 from os.path import isfile, dirname
 from subprocess import Popen
 from os import name as osname
+from socket import gethostname
 
 if osname == 'posix':
     from os import setsid
@@ -41,7 +42,7 @@ class Module():
             settings['nwchem']['Addition environment variables'] = ''
         self.nwset = settings['nwchem']
         self.tmp = settings['Main']['Temporary directory']
-        self.nproc = str(settings['Main']['Number of processors'])
+        self.nproc = settings['Main']['Number of processors']
 
     def register(self, job):
         ifile = job.files['ifile']
@@ -59,16 +60,19 @@ class Module():
         if not isfile(ifile):
             return Popen(['sleep', '1'], preexec_fn=setsid)
         nodes = ""
+        procs = str(self.nproc)
         # Command preparation
         if 'nodelist' in job.params:
+            procs = str(self.nproc + job.params['reqprocs'])
+            nodes += gethostname() + ','
             for node, nproc in job.params['nodelist']:
                 for i in range(0, nproc):
                     nodes += node + ','
             if len(nodes) > 0:
                 nodes = '-H ' + nodes[:-1]
-        cmd = self.nwset['Addition environment variables'] + ' ' +\
-        self.nwset['MPI executable file'] +\
-        ' -n ' + self.nproc + ' ' + nodes +\
+        # TODO: Attach self.nwset['Addition environment variables'] + ' ' +
+        cmd = self.nwset['MPI executable file'] + ' -wd ' + self.tmp +\
+        ' -n ' + procs + ' ' + nodes + ' --hetero-nodes' +\
         ' ' + self.nwset['nwchem executable file'] + ' ' + ifile + ' > ' +\
         job.files['ofile']
         # Execution
