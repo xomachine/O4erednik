@@ -93,7 +93,7 @@ class Processor(LogableThread):
                 self.inform('start', self.cur)
                 # Do job
                 if 'reqprocs' in self.cur.params:
-                    self.cur.params['nodelist'] = self.alloc(
+                    self.cur.params['nodelist'], self.cur.params['reqprocs'] = self.alloc(
                         self.cur.params['reqprocs'])
                 process = self.workers[self.cur.type].do(self.cur)
                 if process:
@@ -360,7 +360,7 @@ class UDPServer(LogableThread):
                     )
                 lst.append([node, nproc])
         debug("Registred" + str(lst))
-        return lst
+        return lst, procs
 
     def free_nodes(self, lst):
         for node, nproc in lst:

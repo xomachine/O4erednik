@@ -61,6 +61,8 @@ class Module():
                     chknum += 1
                 elif buf.startswith('%lindaworkers'):
                     ls = buf[14:-1].split(',')
+                    if 'reqprocs' in job.params and job.params['reqprocs'] > 0:
+                        continue
                     job.params['reqprocs'] = 0
                     for i in ls:
                         if ':' in i:

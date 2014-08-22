@@ -21,7 +21,7 @@
 
 from PyQt4.QtGui import QApplication, QSystemTrayIcon, QIcon, QPixmap, QMenu
 from PyQt4.QtGui import QCursor, QFileDialog, QDialog, QWidget, QGroupBox
-from PyQt4.QtGui import QVBoxLayout, QIntValidator, QScrollArea
+from PyQt4.QtGui import QVBoxLayout, QIntValidator, QScrollArea, QInputDialog
 from PyQt4.uic import loadUi
 from PyQt4.QtCore import QTextCodec, SIGNAL, QTranslator, QLocale
 from os import _exit, sep
@@ -173,7 +173,7 @@ class LeftMenu(QMenu):
         clact.triggered.connect(self.recent.clear)
 
     def DoAdd(self):
-        #TODO: Separated window for selecting job
+
         types = self.tr('Select job type')
         for sect in list(self.backend.shared.settings.keys()):
             if sect == 'Main':
@@ -188,8 +188,16 @@ class LeftMenu(QMenu):
             )
         if filename:
             self.lastpath = dirname(filename)
+            # There will be procs request
+            numproc, ok = QInputDialog. getInteger(self,
+                self.tr("How many processors required to job?"),
+                self.tr("Number of processors (0 - default):"),
+                0,
+                0)
+            if (ok is False):
+                numproc = 0
             self.backend.sendto(
-                dumps(['A', [jtype[:-5], {"ifile": filename}, {}]])
+                dumps(['A', [jtype[:-5], {"ifile": filename}, {'reqprocs': int(numproc)}]])
                 )
 
 
