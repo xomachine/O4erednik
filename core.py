@@ -348,6 +348,8 @@ class UDPServer(LogableThread):
         debug("Found:" + str(allocated))
         for node, nproc in allocated:
             if procs < nprocs:
+                if (not nproc is int) or (not node is str):
+                    continue
                 debug("Asking for " + node)
                 procs += nproc
                 self.udp.sendto(
