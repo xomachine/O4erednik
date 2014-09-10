@@ -339,14 +339,16 @@ class UDPServer(LogableThread):
         self.actions['F'] = lambda x, y: allocated.append([y, x])
         debug("Sending req for free nodes")
         self.udp.sendto(
-                dumps(['L', None]).encode('utf-8'),
+                dumps(['L', 'lock']).encode('utf-8'),  # "lock" will protect us from interseption from other computers
                 (self.shared.bcastaddr(self.ifname), 50000)
                 )
-        sleep(2)
+        sleep(1)
         self.actions['F'] = self.mFree
         # Select nprocs from list
         debug("Found:" + str(allocated))
         for node, nproc in allocated:
+            if [node, nproc] in lst: # Dublicate calls protection
+                continue
             if procs < nprocs:
                 if nproc == None:
                     continue
@@ -427,6 +429,9 @@ class UDPServer(LogableThread):
             self.udp.sendto(dumps(['F',
                     self.shared.settings['Main']['Number of processors']
                     ]).encode('utf-8'), (peer, 50000))
+            if params is str:
+                if params == "lock":
+                    sleep(1)
 
     def mKill(self, params, peer):
         debug('Kill "' + str(params) + '"')
