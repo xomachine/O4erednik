@@ -71,7 +71,8 @@ class Module():
             if len(nodes) > 0:
                 nodes = '-H ' + nodes[:-1]
         # TODO: Attach self.nwset['Addition environment variables'] + ' ' +
-        cmd = self.nwset['MPI executable file'] + ' -wd ' + self.tmp +\
+        # CHECKME test mpi sharing
+        cmd = self.nwset['MPI executable file'] + ' -wd ' + dirname(job.files['ofile']) +\
         ' -n ' + procs + ' ' + nodes + ' --hetero-nodes' +\
         ' ' + self.nwset['nwchem executable file'] + ' ' + ifile + ' > ' +\
         job.files['ofile']
