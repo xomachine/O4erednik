@@ -183,4 +183,3 @@ class Resources():
 # Stub informer, will be replaced by gui informer
     def inform(self, *signal):
         return
-e
