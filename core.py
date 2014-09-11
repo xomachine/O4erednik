@@ -112,6 +112,20 @@ class Processor(LogableThread):
                 self.unlocked.clear()
                 self.unlocked.wait()
                 self.inform('done', str(self.cur.id))
+            elif self.cur.type == 'waitfor':
+                if 'pid' in self.cur.params:
+                    self.pid = self.cur.params['pid']
+                self.inform('start', self.cur)
+                while True:
+                    try:
+                        kill(self.pid, 0)
+                    except:
+                        break
+                    else:
+                        sleep(5) #TODO: Find optimal check interval
+                if 'nodelist' in self.cur.params:
+                    self.free(self.cur.params['nodelist'])
+                self.inform('done', str(self.cur.id))
             self.cur = None
 
 

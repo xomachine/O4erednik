@@ -41,3 +41,6 @@ if __name__ == '__main__':
     if guibackend:
         guibackend.run()
     mainsrv.join()
+    if mainserv.processor.cur or shared.queue._fill.isSet()
+        shared.freeze(mainserv.processor)
+        

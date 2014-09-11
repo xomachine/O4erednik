@@ -70,6 +70,9 @@ class Queue(list):
 
 class Resources():
 
+
+    
+
     def __init__(self):
         super(Resources, self).__init__()
         # Programm position
@@ -156,15 +159,28 @@ class Resources():
                     self.settings[key] = value
 
 # Used to freeze shared resources before restart programm
-    def freeze(self):
-        pass
+    def freeze(self, processor):
+        dmp = dict()
+        cur = processor.getcur()
+        cur.params['pid'] = processor.getpid()
+        dmp['queue'] = list()
+        dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': 'waitfor'})
+        for j in self.queue:
+            dmp['queue'].append({'uid': j.id, 'files': j.files, 'params': j.params, 'jtype': j.type})
+        with open(self.path + sep + 'frozen.dat', 'w') as f:
+            dump(dmp, f, indent=4, skipkeys=True)
         #TODO: Hot restart
 
 # Used to unfreeze shared resources after programm restarted
     def unfreeze(self):
         if not isfile(self.path + sep + 'frozen.dat'):
             return
+        with open(self.path + sep + 'frozen.dat', 'r') as f:
+            dmp = load(f)
+        for j in dmp['queue']:
+            self.queue.put(Job(*j))
 
 # Stub informer, will be replaced by gui informer
     def inform(self, *signal):
         return
+e
