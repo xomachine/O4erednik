@@ -19,7 +19,7 @@
 '''
 
 from logging import error
-from os.path import isfile, dirname
+from os.path import isfile, dirname, sep, basename
 from subprocess import Popen
 from os import name as osname
 from socket import gethostname
@@ -50,6 +50,8 @@ class Module():
             return False
         if not 'ofile' in job.files:
             job.files['ofile'] = ifile[:-2] + "out"
+        job.files['xyz'] = ifile[:-2] + "xyz"
+        job.params['prefix'] = basename(ifile)[:-2]
         return job
         #TODO: add register temp files if needed
 
@@ -72,10 +74,11 @@ class Module():
                 nodes = '-H ' + nodes[:-1]
         # TODO: Attach self.nwset['Addition environment variables'] + ' ' +
         # CHECKME test mpi sharing
-        cmd = self.nwset['MPI executable file'] + ' -wd ' + dirname(job.files['ofile']) +\
+        cmd = self.nwset['MPI executable file'] + ' -wd ' + self.tmp +\
         ' -n ' + procs + ' ' + nodes + ' --hetero-nodes' +\
         ' ' + self.nwset['nwchem executable file'] + ' ' + ifile + ' > ' +\
-        job.files['ofile']
+        job.files['ofile'] + '; mv ' + self.tmp + sep + job.params['prefix'] +\
+        '* ' + dirname(ifile)
         # Execution
         proc = Popen(
             [cmd],
