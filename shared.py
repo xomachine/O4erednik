@@ -24,7 +24,7 @@ from socket import socket, AF_INET, SOCK_DGRAM, IPPROTO_UDP
 from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
-from os import makedirs, listdir, sep, curdir, name as osname
+from os import remove, makedirs, listdir, sep, curdir, name as osname
 from logging import basicConfig, warning, DEBUG as LEVEL
 from struct import pack
 if osname == 'posix':
@@ -160,8 +160,6 @@ class Resources():
 
 # Used to freeze shared resources before restart programm
     def freeze(self, processor):
-        
-        
         cur = processor.getcur()
         if (cur is None) and (len(self.queue)==0)
             return
@@ -174,7 +172,6 @@ class Resources():
             dmp['queue'].append({'uid': j.id, 'files': j.files, 'params': j.params, 'jtype': j.type})
         with open(self.path + sep + 'frozen.dat', 'w') as f:
             dump(dmp, f, indent=4, skipkeys=True)
-        #TODO: Hot restart
 
 # Used to unfreeze shared resources after programm restarted
     def unfreeze(self):
@@ -184,6 +181,10 @@ class Resources():
             dmp = load(f)
         for j in dmp['queue']:
             self.queue.put(Job(*j))
+            
+    def clearfrozen(self)
+        if isfile(self.path + sep + 'frozen.dat'):
+            remove(self.path + sep + 'frozen.dat')
 
 # Stub informer, will be replaced by gui informer
     def inform(self, *signal):

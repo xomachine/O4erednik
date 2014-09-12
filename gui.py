@@ -31,7 +31,6 @@ from subprocess import Popen
 from time import strftime
 import icons
 from logging import debug
-from threading import enumerate as enum
 
 _icons = dict()
 

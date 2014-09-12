@@ -83,6 +83,7 @@ class Processor(LogableThread):
                     (self.bcastaddr(self.ifname), 50000)
                     )
                 self.inform('empty')
+                self.shared.clearfrozen()
             self.cur = self.queue.get()
             if len(self.queue) > 0:  # Look For Free if queue still fill
                 self.udp.sendto(
