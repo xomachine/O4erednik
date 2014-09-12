@@ -24,13 +24,14 @@ from PyQt4.QtGui import QCursor, QFileDialog, QDialog, QWidget, QGroupBox
 from PyQt4.QtGui import QVBoxLayout, QIntValidator, QScrollArea, QInputDialog
 from PyQt4.uic import loadUi
 from PyQt4.QtCore import QTextCodec, SIGNAL, QTranslator, QLocale
-from os import _exit, sep
+from os import sep
 from os.path import basename, dirname
 from json import dumps
 from subprocess import Popen
 from time import strftime
 import icons
 from logging import debug
+from threading import enumerate as enum
 
 _icons = dict()
 
@@ -218,7 +219,9 @@ class RightMenu(QMenu):
             ).triggered.connect(self.DoExit)
 
     def DoExit(self):
-        _exit(0)
+        self.backend.sendto(
+                dumps(['E', None])
+                )
 
     def DoSetup(self):
 

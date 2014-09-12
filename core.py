@@ -22,7 +22,7 @@
 from api import LogableThread, FileTransfer
 from json import loads, dumps
 from logging import debug, error, warning
-from os import kill, name as osname, makedirs, sep
+from os import kill, name as osname, makedirs, sep, _exit
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep, monotonic
@@ -96,6 +96,7 @@ class Processor(LogableThread):
                     self.cur.params['nodelist'], self.cur.params['reqprocs'] = self.alloc(
                         self.cur.params['reqprocs'])
                 process = self.workers[self.cur.type].do(self.cur)
+                self.shared.freeze(self)
                 if process:
                     self.pid = process.pid
                     process.wait()
@@ -342,6 +343,7 @@ class UDPServer(LogableThread):
             'L': self.mLFF,
             'K': self.mKill,
             'S': self.mShare,
+            'E': self.mExit
             }
 
     def alloc_nodes(self, nprocs):
@@ -386,6 +388,11 @@ class UDPServer(LogableThread):
                 dumps(['K', "lock"]).encode('utf-8'),
                 (node, 50000)
                 )
+
+    def stop(self):
+        self.shared.freeze(self.processor)
+        self._alive = False
+        _exit(0)
 
     def run(self):
         self.processor.start()
@@ -471,3 +478,7 @@ class UDPServer(LogableThread):
 
     def mShare(self, params, peer):
         RemoteReporter(self.processor, self.shared, peer).start()
+        
+    def mExit(self, params, peer):
+        self.shared.freeze(self.processor)
+        _exit(0)

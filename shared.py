@@ -160,11 +160,16 @@ class Resources():
 
 # Used to freeze shared resources before restart programm
     def freeze(self, processor):
-        dmp = dict()
+        
+        
         cur = processor.getcur()
+        if (cur is None) and (len(self.queue)==0)
+            return
+        dmp = dict()
         cur.params['pid'] = processor.getpid()
         dmp['queue'] = list()
-        dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': 'waitfor'})
+        if cur:
+            dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': 'waitfor'})
         for j in self.queue:
             dmp['queue'].append({'uid': j.id, 'files': j.files, 'params': j.params, 'jtype': j.type})
         with open(self.path + sep + 'frozen.dat', 'w') as f:
