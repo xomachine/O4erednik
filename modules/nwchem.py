@@ -55,10 +55,11 @@ class Module():
             for buf in lines:
                 sbuf = buf.lstrip()
                 if sbuf.lower().startswith('start'):
-                    job.params['prefix'] = buf[6:]
+                    job.params['prefix'] = sbuf[5:].lstrip()
                 else if sbuf.lower().startswith('xyz'):
-                    if len(sbuf) > 4:
-                        job.files['xyz'] = sbuf[6:] + ".fxyz"
+                    xyz = sbuf[3:].lstrip()
+                    if len(xyz) > 0:
+                        job.files['xyz'] = xyz + ".fxyz"
                     else:
                         if 'prefix' in job.params:
                             job.files['xyz'] = job.params['prefix'] + ".fxyz"
