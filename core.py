@@ -67,6 +67,7 @@ class Processor(LogableThread):
         self.inform = shared.inform
         self.udp = shared.udpsocket
         self.workers = shared.modules
+        self.shared = shared
 
     def getcur(self):
         return self.cur

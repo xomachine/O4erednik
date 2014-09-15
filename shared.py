@@ -27,6 +27,7 @@ from os.path import realpath, isfile, dirname
 from os import remove, makedirs, listdir, sep, curdir, name as osname
 from logging import basicConfig, warning, DEBUG as LEVEL
 from struct import pack
+from core import Job
 if osname == 'posix':
     from fcntl import ioctl
     from os import sysconf
@@ -161,12 +162,12 @@ class Resources():
 # Used to freeze shared resources before restart programm
     def freeze(self, processor):
         cur = processor.getcur()
-        if (cur is None) and (len(self.queue)==0)
+        if (cur is None) and (len(self.queue)==0):
             return
         dmp = dict()
-        cur.params['pid'] = processor.getpid()
         dmp['queue'] = list()
         if cur:
+            cur.params['pid'] = processor.getpid()
             dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': 'waitfor'})
         for j in self.queue:
             dmp['queue'].append({'uid': j.id, 'files': j.files, 'params': j.params, 'jtype': j.type})
@@ -182,7 +183,7 @@ class Resources():
         for j in dmp['queue']:
             self.queue.put(Job(*j))
             
-    def clearfrozen(self)
+    def clearfrozen(self):
         if isfile(self.path + sep + 'frozen.dat'):
             remove(self.path + sep + 'frozen.dat')
 
