@@ -50,8 +50,18 @@ class Module():
             return False
         if not 'ofile' in job.files:
             job.files['ofile'] = ifile[:-2] + "out"
-        job.files['xyz'] = ifile[:-2] + "xyz"
-        job.params['prefix'] = basename(ifile)[:-2]
+        with open(ifile, 'r') as f:
+            lines = f.readlines()
+            for buf in lines:
+                sbuf = buf.lstrip()
+                if sbuf.lower().startswith('start'):
+                    job.params['prefix'] = buf[6:]
+                else if sbuf.lower().startswith('xyz'):
+                    if len(sbuf) > 4:
+                        job.files['xyz'] = sbuf[6:] + ".fxyz"
+                    else:
+                        if 'prefix' in job.params:
+                            job.files['xyz'] = job.params['prefix'] + ".fxyz"
         return job
         #TODO: add register temp files if needed
 
