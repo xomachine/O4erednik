@@ -112,6 +112,7 @@ class Processor(LogableThread):
                         pass
             elif self.cur.type == 'lock':
                 self.inform('start', self.cur)
+                self.shared.freeze(self)
                 self.unlocked.clear()
                 self.unlocked.wait()
                 self.inform('done', str(self.cur.id))
@@ -119,6 +120,7 @@ class Processor(LogableThread):
                 if 'pid' in self.cur.params:
                     self.pid = self.cur.params['pid']
                 self.inform('start', self.cur)
+                self.shared.freeze(self)
                 while True:
                     try:
                         kill(self.pid, 0)
