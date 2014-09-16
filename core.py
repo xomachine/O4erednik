@@ -86,6 +86,7 @@ class Processor(LogableThread):
                 self.inform('empty')
                 self.shared.clearfrozen()
             self.cur = self.queue.get()
+            debug("Extracted type " + self.cur.type)
             if len(self.queue) > 0:  # Look For Free if queue still fill
                 self.udp.sendto(
                     dumps(['L', None]).encode('utf-8'),

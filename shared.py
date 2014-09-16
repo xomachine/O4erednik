@@ -183,9 +183,9 @@ class Resources():
             with open(self.path + sep + 'frozen.dat', 'r') as f:
                 dmp = load(f)
                 for j in dmp['queue']:
-                    self.queue.put(Job(*j))
-                    debug("Added to queue " + j)
-                    debug("Queue len " + len(queue))
+                    self.queue.put(Job(**j))
+                    debug("Added to queue " + str(j))
+                    debug("Queue len " + str(len(self.queue)))
             
     def clearfrozen(self):
         if isfile(self.path + sep + 'frozen.dat'):
