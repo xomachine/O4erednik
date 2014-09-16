@@ -21,7 +21,7 @@
 
 from api import LogableThread, FileTransfer
 from json import loads, dumps
-from logging import debug, error, warning
+from logging import debug, error, warning, exception
 from os import kill, name as osname, makedirs, sep, _exit
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
@@ -117,7 +117,9 @@ class Processor(LogableThread):
                 self.unlocked.wait()
                 self.inform('done', str(self.cur.id))
             elif self.cur.type == 'waitfor':
+                debug("Waitfor assignment")
                 if 'pid' in self.cur.params:
+                    debug("PID set successfuly")
                     self.pid = self.cur.params['pid']
                 self.inform('start', self.cur)
                 self.shared.freeze(self)
@@ -125,6 +127,7 @@ class Processor(LogableThread):
                     try:
                         kill(self.pid, 0)
                     except:
+                        exception("Looks like job is done")
                         break
                     else:
                         sleep(5) #TODO: Find optimal check interval
