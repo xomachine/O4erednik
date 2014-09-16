@@ -25,7 +25,7 @@ from socket import SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST, inet_ntoa
 from json import dump, load
 from os.path import realpath, isfile, dirname
 from os import remove, makedirs, listdir, sep, curdir, name as osname
-from logging import basicConfig, warning, DEBUG as LEVEL
+from logging import basicConfig, debug, warning, DEBUG as LEVEL
 from struct import pack
 from core import Job
 if osname == 'posix':
