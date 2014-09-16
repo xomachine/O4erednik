@@ -86,13 +86,32 @@ class Processor(LogableThread):
                 self.inform('empty')
                 self.shared.clearfrozen()
             self.cur = self.queue.get()
-            debug("Extracted type " + self.cur.type)
+            
             if len(self.queue) > 0:  # Look For Free if queue still fill
                 self.udp.sendto(
                     dumps(['L', None]).encode('utf-8'),
                     (self.bcastaddr(self.ifname), 50000)
                     )
-            if self.cur.type in self.workers:
+            if 'resume' in self.cur.params:
+                self.inform('add', self.cur)
+                debug("Waitfor assignment")
+                if 'pid' in self.cur.params:
+                    debug("PID set successfuly")
+                    self.pid = self.cur.params['pid']
+                self.inform('start', self.cur)
+                self.shared.freeze(self)
+                while True:
+                    try:
+                        kill(self.pid, 0)
+                    except:
+                        exception("Looks like job is done")
+                        break
+                    else:
+                        sleep(5) #TODO: Find optimal check interval
+                if 'nodelist' in self.cur.params:
+                    self.free(self.cur.params['nodelist'])
+                self.inform('done', str(self.cur.id))
+            elif self.cur.type in self.workers:
                 self.inform('start', self.cur)
                 # Do job
                 if 'reqprocs' in self.cur.params:
@@ -116,25 +135,6 @@ class Processor(LogableThread):
                 self.shared.freeze(self)
                 self.unlocked.clear()
                 self.unlocked.wait()
-                self.inform('done', str(self.cur.id))
-            elif self.cur.type == 'waitfor':
-                self.inform('add', self.cur)
-                debug("Waitfor assignment")
-                if 'pid' in self.cur.params:
-                    debug("PID set successfuly")
-                    self.pid = self.cur.params['pid']
-                self.inform('start', self.cur)
-                self.shared.freeze(self)
-                while True:
-                    try:
-                        kill(self.pid, 0)
-                    except:
-                        exception("Looks like job is done")
-                        break
-                    else:
-                        sleep(5) #TODO: Find optimal check interval
-                if 'nodelist' in self.cur.params:
-                    self.free(self.cur.params['nodelist'])
                 self.inform('done', str(self.cur.id))
             self.cur = None
 

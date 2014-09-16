@@ -167,10 +167,10 @@ class Resources():
         dmp = dict()
         dmp['queue'] = list()
         if cur:
-            if not (cur.type == 'lock'):
-                cur.type = 'waitfor'
+            if not (cur.type == "lock"):
+                cur.params['resume'] = 'resume'
             cur.params['pid'] = processor.getpid()
-            dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': 'waitfor'})
+            dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': cur.type})
         for j in self.queue:
             dmp['queue'].append({'uid': j.id, 'files': j.files, 'params': j.params, 'jtype': j.type})
         with open(self.path + sep + 'frozen.dat', 'w') as f:
