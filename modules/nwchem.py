@@ -56,7 +56,7 @@ class Module():
                 sbuf = buf.lstrip()
                 if sbuf.lower().startswith('start'):
                     job.params['prefix'] = sbuf[5:].lstrip()
-                else if sbuf.lower().startswith('xyz'):
+                elif sbuf.lower().startswith('xyz'):
                     xyz = sbuf[3:].lstrip()
                     if len(xyz) > 0:
                         job.files['xyz'] = xyz + ".fxyz"
