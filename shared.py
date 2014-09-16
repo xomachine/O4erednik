@@ -182,9 +182,9 @@ class Resources():
             debug("unfreezing...")
             with open(self.path + sep + 'frozen.dat', 'r') as f:
                 dmp = load(f)
-            for j in dmp['queue']:
-                debug("Added to queue " + j["jtype"])
-                self.queue.put(Job(*j))
+                for j in dmp['queue']:
+                    debug("Added to queue " + j["jtype"])
+                    self.queue.put(Job(*j))
             
     def clearfrozen(self):
         if isfile(self.path + sep + 'frozen.dat'):
