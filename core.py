@@ -118,7 +118,7 @@ class Processor(LogableThread):
                 self.unlocked.wait()
                 self.inform('done', str(self.cur.id))
             elif self.cur.type == 'waitfor':
-                self.inform('add', job)
+                self.inform('add', self.cur)
                 debug("Waitfor assignment")
                 if 'pid' in self.cur.params:
                     debug("PID set successfuly")
