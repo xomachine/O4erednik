@@ -178,14 +178,13 @@ class Resources():
 
 # Used to unfreeze shared resources after programm restarted
     def unfreeze(self):
-        if not isfile(self.path + sep + 'frozen.dat'):
-            return
-        debug("unfreezing...")
-        with open(self.path + sep + 'frozen.dat', 'r') as f:
-            dmp = load(f)
-        for j in dmp['queue']:
-            debug("Added to queue ", j)
-            self.queue.put(Job(*j))
+        if isfile(self.path + sep + 'frozen.dat'):
+            debug("unfreezing...")
+            with open(self.path + sep + 'frozen.dat', 'r') as f:
+                dmp = load(f)
+            for j in dmp['queue']:
+                debug("Added to queue ", j)
+                self.queue.put(Job(*j))
             
     def clearfrozen(self):
         if isfile(self.path + sep + 'frozen.dat'):
