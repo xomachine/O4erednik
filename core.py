@@ -98,9 +98,9 @@ class Processor(LogableThread):
                     self.cur.params['nodelist'], self.cur.params['reqprocs'] = self.alloc(
                         self.cur.params['reqprocs'])
                 process = self.workers[self.cur.type].do(self.cur)
-                self.shared.freeze(self)
                 if process:
                     self.pid = process.pid
+                    self.shared.freeze(self)
                     process.wait()
                 if 'nodelist' in self.cur.params:
                     self.free(self.cur.params['nodelist'])
