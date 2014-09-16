@@ -183,7 +183,7 @@ class Resources():
             with open(self.path + sep + 'frozen.dat', 'r') as f:
                 dmp = load(f)
             for j in dmp['queue']:
-                debug("Added to queue ", j)
+                debug("Added to queue " + j["jtype"])
                 self.queue.put(Job(*j))
             
     def clearfrozen(self):
