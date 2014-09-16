@@ -167,6 +167,8 @@ class Resources():
         dmp = dict()
         dmp['queue'] = list()
         if cur:
+            if not (cur.type == 'lock'):
+                cur.type = 'waitfor'
             cur.params['pid'] = processor.getpid()
             dmp['queue'].append({'uid': cur.id, 'files': cur.files, 'params': cur.params, 'jtype': 'waitfor'})
         for j in self.queue:
