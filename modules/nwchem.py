@@ -46,6 +46,7 @@ class Module():
 
     def register(self, job):
         ifile = job.files['ifile']
+        let = "f"
         if not isfile(ifile):
             return False
         if not 'ofile' in job.files:
@@ -56,13 +57,15 @@ class Module():
                 sbuf = buf.lstrip()
                 if sbuf.lower().startswith('start'):
                     job.params['prefix'] = sbuf[5:-1].lstrip().rstrip()
+                elif sbuf.lower().startswith('backward'):
+                    let = "b"
                 elif sbuf.lower().startswith('xyz'):
                     xyz = sbuf[3:-1].lstrip().rstrip()
                     if len(xyz) > 0:
-                        job.files['xyz'] = xyz + ".fxyz"
+                        job.files['xyz'] = xyz + "."+let+"xyz"
                     else:
                         if 'prefix' in job.params:
-                            job.files['xyz'] = job.params['prefix'] + ".fxyz"
+                            job.files['xyz'] = job.params['prefix'] + "."+let+"xyz"
         return job
         #TODO: add register temp files if needed
 
