@@ -432,7 +432,7 @@ class UDPServer(LogableThread):
         debug("Added job with id:" + str(job.id))
         self.inform('add', job)
         self.queue.put(job)
-	self.shared.freeze(self.processor)
+        self.shared.freeze(self.processor)
         if job.id > 0:
             kill(job.id, 19)
 
