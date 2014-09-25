@@ -143,7 +143,7 @@ class RemoteReporter(LogableThread, FileTransfer):
 
     def __init__(self, processor, shared, peer):
         super(RemoteReporter, self).__init__()
-        self.name = 'Reporter-' + gethostbyaddr(peer)[0]
+        self.name = 'Reporter-' + peer
         # Binding shared objects
         self.dir = shared.settings['Main']['Temporary directory'] + sep + \
         hex(int(monotonic() * 100))[2:]
@@ -260,7 +260,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
 
     def __init__(self, shared, peer):
         super(RemoteReceiver, self).__init__()
-        self.peer = gethostbyaddr(peer)[0]
+        self.peer = peer
         self.name = 'Receiver-' + self.peer
         # Binding shared objects
         self.queue = shared.queue
