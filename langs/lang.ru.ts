@@ -1,46 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    This file is part of O4erednik.
-
-    O4erednik is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License or
-    (at your option) any later version.
-
-    O4erednik is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with O4erednik.  If not, see <http://www.gnu.org/licenses/>.
-
-    Copyright 2014 Fomichev Dmitriy
--->
 <!DOCTYPE TS>
 <TS version="2.0" language="ru_RU">
 <context>
     <name>Dialog</name>
     <message>
-        <location filename="settings_form.ui" line="26"/>
+        <location filename="settings_form.ui" line="44"/>
         <source>Settings</source>
-        <translation>Настройка</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="settings_form.ui" line="57"/>
+        <location filename="settings_form.ui" line="75"/>
         <source>Save</source>
-        <translation>Сохранить</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="settings_form.ui" line="64"/>
+        <location filename="settings_form.ui" line="82"/>
         <source>Cancel</source>
-        <translation>Отмена</translation>
+        <translation></translation>
     </message>
 </context>
 <context>
     <name>GroupBox</name>
     <message>
-        <location filename="settings_element.ui" line="29"/>
+        <location filename="settings_element.ui" line="47"/>
         <source>GroupBox</source>
         <translation></translation>
     </message>
@@ -48,158 +30,218 @@
 <context>
     <name>LeftMenu</name>
     <message>
-        <location filename="gui.py" line="126"/>
+        <location filename="gui.py" line="146"/>
         <source>Add job</source>
-        <translation>Добавить задачу</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="133"/>
+        <location filename="gui.py" line="151"/>
+        <source>Clear recent</source>
+        <translation>Очистить недавно завершенные</translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="158"/>
         <source>In process:</source>
-        <translation>Выполняются:</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="138"/>
+        <location filename="gui.py" line="163"/>
         <source>Queue:</source>
-        <translation>Очередь:</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="143"/>
+        <location filename="gui.py" line="168"/>
         <source>Recent:</source>
-        <translation>Недавно завершенные:</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="149"/>
+        <location filename="gui.py" line="177"/>
         <source>Select job type</source>
-        <translation>Выберите тип задачи</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="154"/>
+        <location filename="gui.py" line="182"/>
         <source>Select job</source>
-        <translation>Выберите задачу</translation>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="192"/>
+        <source>How many processors required to job?</source>
+        <translation>Сколько процессоров использовать?</translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="192"/>
+        <source>Number of processors (0 - default):</source>
+        <translation>Количество ядер процессоров (0 - автоматически):</translation>
     </message>
 </context>
 <context>
     <name>RightMenu</name>
     <message>
-        <location filename="gui.py" line="173"/>
+        <location filename="gui.py" line="210"/>
         <source>Settings</source>
-        <translation>Настройка</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="178"/>
+        <location filename="gui.py" line="215"/>
         <source>Exit</source>
-        <translation>Выход</translation>
+        <translation></translation>
     </message>
 </context>
 <context>
     <name>SettingsDialog</name>
     <message>
-        <location filename="gui.py" line="38"/>
-        <source>Select path</source>
-        <translation>Выберите путь к папке</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="49"/>
-        <source>Select file</source>
-        <translation>Выберите путь к файлу</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="49"/>
-        <source>All files(*)</source>
-        <translation>Все файлы(*)</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="103"/>
-        <source>Incorrect value</source>
-        <translation>Неверное значение</translation>
-    </message>
-    <message>
-        <location filename="shared.py" line="73"/>
+        <location filename="shared.py" line="104"/>
         <source>Main</source>
-        <translation>Основные</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="core.py" line="273"/>
+        <location filename="core.py" line="55"/>
+        <source>Client mode</source>
+        <translation>Режим клиента</translation>
+    </message>
+    <message>
+        <location filename="core.py" line="342"/>
         <source>Interface</source>
-        <translation>Сетевой интерфейс</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="shared.py" line="73"/>
+        <location filename="shared.py" line="104"/>
         <source>Temporary directory</source>
-        <translation>Временная папка</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="g03.py" line="17"/>
+        <location filename="nwchem.py" line="49"/>
         <source>Number of processors</source>
-        <translation>Число процессоров</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="g03.py" line="20"/>
+        <location filename="g03.py" line="44"/>
         <source>g03</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="g03.py" line="20"/>
+        <location filename="g03.py" line="44"/>
         <source>G03 executable file</source>
-        <translation>Исполняемый файл Gaussian03</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="260"/>
+        <location filename="nwchem.py" line="43"/>
         <source>Visualiser executable file</source>
-        <translation>Исполняемый файл визуализатора</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="269"/>
+        <location filename="gamess.py" line="45"/>
+        <source>gamess</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gamess.py" line="39"/>
+        <source>GAMESS executable file</source>
+        <translation>Исполняемый файл GAMESS</translation>
+    </message>
+    <message>
+        <location filename="gamess.py" line="41"/>
+        <source>Kickoff executable file</source>
+        <translation>Исполняемый файл программы запуска</translation>
+    </message>
+    <message>
+        <location filename="gamess.py" line="45"/>
+        <source>Kickoff typesocket</source>
+        <translation>Тип запуска</translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="59"/>
+        <source>Select path</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="70"/>
+        <source>Select file</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="70"/>
+        <source>All files(*)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="123"/>
+        <source>Incorrect value</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="306"/>
         <source>Text editor executable file</source>
-        <translation>Исполняемый файл текстового редактора</translation>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="nwchem.py" line="45"/>
+        <source>nwchem</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="nwchem.py" line="39"/>
+        <source>nwchem executable file</source>
+        <translation>Исполняемый файл NWChem</translation>
+    </message>
+    <message>
+        <location filename="nwchem.py" line="41"/>
+        <source>MPI executable file</source>
+        <translation>Исполняемый файл MPI</translation>
+    </message>
+    <message>
+        <location filename="nwchem.py" line="45"/>
+        <source>Addition environment variables</source>
+        <translation>Дополнительные переменные окружения</translation>
     </message>
 </context>
 <context>
     <name>TrayIcon</name>
     <message>
-        <location filename="gui.py" line="237"/>
-        <source>Status</source>
-        <translation>Состояние</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="237"/>
-        <source>The computer is free!</source>
-        <translation>Компьютер свободен!</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="266"/>
-        <source>Open in text editor</source>
-        <translation>Открыть в текстовом редакторе</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="302"/>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="298"/>
-        <source>Job completed!</source>
-        <translation>Задача завершена!</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="257"/>
-        <source>Open in visualiser</source>
-        <translation>Открыть в визуализаторе</translation>
-    </message>
-    <message>
-        <location filename="gui.py" line="223"/>
+        <location filename="gui.py" line="262"/>
         <source>Cancel</source>
-        <translation>Отмена</translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="298"/>
+        <location filename="gui.py" line="272"/>
+        <source>Status</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="272"/>
+        <source>The computer is free!</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="294"/>
+        <source>Open in visualiser</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="303"/>
+        <source>Open in text editor</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="349"/>
+        <source>Job completed!</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="349"/>
         <source>Job for </source>
-        <translation>Задача </translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="gui.py" line="298"/>
+        <location filename="gui.py" line="349"/>
         <source> completed!</source>
-        <translation> завершена!</translation>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="gui.py" line="354"/>
+        <source>Delete</source>
+        <translation></translation>
     </message>
 </context>
 </TS>
