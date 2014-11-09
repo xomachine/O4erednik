@@ -47,6 +47,7 @@ class Module():
     def register(self, job):
         ifile = job.files['ifile']
         let = "f"
+        job.params["prefix"] = ""
         if not isfile(ifile):
             return False
         if not 'ofile' in job.files:
