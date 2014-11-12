@@ -137,9 +137,9 @@ class Backend():
             realuid = uid
         else:
             realuid = int(uid)
-        popped = self.qnames.pop(uid, "None")
+        popped = self.qnames.pop(realuid, "None")
         if popped == "None":
-            popped = self.runningnow.pop(uid, "None")
+            popped = self.runningnow.pop(realuid, "None")
         if popped != "None":
             self.recent.append(popped)
         if len(self.recent) > 5:
