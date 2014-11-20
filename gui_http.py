@@ -129,7 +129,10 @@ class Backend():
         self.runningnow = dict()
 
     def sAdd(self, func, job):
-        self.qnames[job.id] = job.files['ifile']
+        if 'ifile' in job.files:
+            self.qnames[job.id] = job.files['ifile']
+        else:
+            self.qnames[job.id] = 'Error in obtaining ifile'
         
 
     def sDone(self, func, uid):
@@ -147,6 +150,9 @@ class Backend():
 
     def sStart(self, func, job, target=None):
         self.qnames.pop(job.id, "None")
-        self.runningnow[job.id] = (job.files['ifile'], target)
+        if 'ifile' in job.files:
+            self.runningnow[job.id] = (job.files['ifile'], target)
+        else:
+            self.runningnow[job.id] = ('Error in obtaining ifile', target)
 
             
