@@ -166,7 +166,7 @@ class Resources():
             return
         dmp = dict()
         dmp['queue'] = list()
-        if cur:
+        if cur and cur.type != "dummy":
             if not (cur.type == "lock"):
                 cur.params['resume'] = 'resume'
             cur.params['pid'] = processor.getpid()
