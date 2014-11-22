@@ -76,6 +76,8 @@ class Processor(LogableThread):
         return self.pid
 
     def run(self):
+        for job in self.queue:
+            self.inform("add", job)
         while self._alive:
             if len(self.queue) == 0:
                 # Send Free signal when queue is empty
@@ -93,7 +95,7 @@ class Processor(LogableThread):
                     (self.bcastaddr(self.ifname), 50000)
                     )
             if 'resume' in self.cur.params:
-                self.inform('add', self.cur)
+                #self.inform('add', self.cur)
                 debug("Waitfor assignment")
                 if 'pid' in self.cur.params:
                     debug("PID set successfuly")
