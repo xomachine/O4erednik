@@ -360,6 +360,8 @@ class UDPServer(LogableThread):
     def alloc_nodes(self, nprocs):
         allocated = []
         lst = []
+        if nprocs == 0:
+            return lst, 0
         debug("Allocating nodes, requested: " + str(nprocs))
         procs = 0
         # Replace FreeHandler to collect list of free computers
