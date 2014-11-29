@@ -210,7 +210,7 @@ class RemoteReporter(LogableThread, FileTransfer):
         rmtree(self.dir, True)
 
     def exception(self):
-        warning('''Something stopped thread by rising exception,
+        exception('''Something stopped thread by rising exception,
 remote job has been canceled''')
         self.stop()
 
@@ -283,7 +283,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
         debug("Job extracted: " + str(self.job.id))
 
     def exception(self):
-        warning(
+        exception(
             '''Something stopped this thread by raising
             exception, job returned into queue''')
         self.stop()
@@ -301,7 +301,9 @@ class RemoteReceiver(LogableThread, FileTransfer):
         self.tcp.send(jpack.encode('utf-8'))
         # Waiting for response from remote host
         while self._alive:
-            req, param = loads(self.tcp.recv(1024).decode('utf-8'))
+            bytees = self.tcp.recv(1024)
+            debug(bytees)
+            req, param = loads(bytees.decode('utf-8'))
             if req == 'G':  # Get file
                 self.sendfile(param)
             elif req == 'T':  # Transfer file
