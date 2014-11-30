@@ -248,6 +248,8 @@ remote job has been canceled''')
             ldir, name = lpath.rsplit(sep, 1)
             # Translate local dir to remote dir,
             # request and send file
+            debug("Sending " + ldir + sep+name + " to peer.")
+            debug("EQDirs contain:" + str(self.eqdirs))
             self.tcp.send(dumps(
                 ['T', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
