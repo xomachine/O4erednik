@@ -191,10 +191,11 @@ class RemoteReporter(LogableThread, FileTransfer):
                 # Receive file to local path
                 self.recvfile(lpath)
             except:
-                error('Error while obtaining job files')
+                exception('Error while obtaining job files')
                 self.stop()
                 return
             # Attach local path to job
+            debug("Replaced " + name + " from " + rpath + " to " + lpath)
             self.job.files[name] = lpath
         # Put job into the queue
         self.queue.put(self.job)
@@ -202,6 +203,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             'add', self.job)
 
     def stop(self):
+        self._alive = false
         self.tcp.close()
         if self.job is self.curproc():
             killpg(self.pid(), 9)
@@ -248,8 +250,6 @@ remote job has been canceled''')
             ldir, name = lpath.rsplit(sep, 1)
             # Translate local dir to remote dir,
             # request and send file
-            debug("Sending " + ldir + sep+name + " to peer.")
-            debug("EQDirs contain:" + str(self.eqdirs))
             self.tcp.send(dumps(
                 ['T', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
