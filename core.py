@@ -203,7 +203,7 @@ class RemoteReporter(LogableThread, FileTransfer):
             'add', self.job)
 
     def stop(self):
-        self._alive = false
+        self._alive = False
         self.tcp.close()
         if self.job is self.curproc():
             killpg(self.pid(), 9)
