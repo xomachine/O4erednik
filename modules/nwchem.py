@@ -47,11 +47,11 @@ class Module():
     def register(self, job):
         ifile = job.files['ifile']
         let = "f"
-        job.params["prefix"] = ""
+        job.params["prefix"] = ifile[:-2]
         if not isfile(ifile):
             return False
         if not 'ofile' in job.files:
-            job.files['ofile'] = ifile[:-2] + "out"
+            job.files['ofile'] = job.params["prefix"] + "out"
         with open(ifile, 'r') as f:
             lines = f.readlines()
             for buf in lines:
