@@ -111,6 +111,8 @@ class Backend():
         
 
     def run(self, server_class=HTTPServer):
+        for job in self.shared.queue:
+            self.sAdd("add", job)
         server_address = ('', 8000)
         httpd = server_class(server_address, self.handler)
         httpd.serve_forever()
