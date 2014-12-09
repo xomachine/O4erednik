@@ -76,8 +76,7 @@ class Processor(LogableThread):
         return self.pid
 
     def run(self):
-        for job in self.queue:
-            self.inform("add", job)
+        
         while self._alive:
             if len(self.queue) == 0:
                 # Send Free signal when queue is empty

@@ -400,7 +400,10 @@ class Backend():
     def run(self):
         pass
         self._tray.show()
+        for job in self.shared.queue:
+            self.sAdd("add", job)
         self._app.exec_()
+        
 
     def loadicon(self, icon):
         p = QPixmap()
