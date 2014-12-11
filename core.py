@@ -314,7 +314,11 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
-                self.inform('start', self.job, self.peer)
+                try:
+                    hn, other = gethostbyaddr(self.peer)
+                    self.inform('start', self.job, hn)
+                except:
+                    self.inform('start', self.job, self.peer)
                 self.tcp.send(b'O')
                 self.recvfile(param, lambda: True if self._alive else False)
                 self.inform('done', str(self.job.id))
