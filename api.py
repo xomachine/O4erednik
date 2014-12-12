@@ -116,6 +116,8 @@ class FileTransfer():
             self._tcp.send(self.FT_OK)
             while alive():
                 rq = self._tcp.recv(self.FT_SREQSIZE)
+                if len(rq) == 0:
+                    continue
                 try:
                     req, size = unpack(
                         self.FT_REQFMT,
