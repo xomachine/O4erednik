@@ -300,6 +300,11 @@ class RemoteReceiver(LogableThread, FileTransfer):
             self.job.id
             ])
         self.tcp.send(jpack.encode('utf-8'))
+        try:
+            hn, other = gethostbyaddr(self.peer)
+            self.inform('start', self.job, hn)
+        except:
+            self.inform('start', self.job, self.peer)
         # Waiting for response from remote host
         while self._alive:
             bytees = self.tcp.recv(1024)
@@ -314,11 +319,6 @@ class RemoteReceiver(LogableThread, FileTransfer):
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
-                try:
-                    hn, other = gethostbyaddr(self.peer)
-                    self.inform('start', self.job, hn)
-                except:
-                    self.inform('start', self.job, self.peer)
                 self.tcp.send(b'O')
                 self.recvfile(param, lambda: True if self._alive else False)
                 self.inform('done', str(self.job.id))
