@@ -66,7 +66,7 @@ class Module():
                         job.files['xyz'] = xyz + "."+let+"xyz"
                     else:
                         if 'prefix' in job.params:
-                            job.files['xyz'] = job.params['prefix'] + "."+let+"xyz"
+                            job.files['xyz'] = job.params['prefix'] +let+"xyz"
         return job
         #TODO: add register temp files if needed
 
