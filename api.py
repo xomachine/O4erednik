@@ -53,9 +53,6 @@ class LogableThread(Thread):
 
 class FileTransfer():
     
-    FT_SIGNATURE = 455 # Just a signature, perhaps can be used in future for version control
-    FT_HEADERFORMAT = 'cI'
-    FT_HEADERSIZE = calcsize(FT_HEADERFORMAT)
     '''
     Header format: [char](?[integer])
     The [char] can be one of theese values:
@@ -66,6 +63,10 @@ class FileTransfer():
     P =  Next message will be portion of data with length equals to [integer]
     W =  New portion of data still not avalible. Try again after [integer] seconds
     '''
+    
+    FT_SIGNATURE = 455 # Just a signature, perhaps can be used in future for version control
+    FT_HEADERFORMAT = 'cI'
+    FT_HEADERSIZE = calcsize(FT_HEADERFORMAT)
     FT_ACKNOLEDGE = b'A'
     FT_HANDSHAKE = b'H'
     FT_PORTION = b'P'
@@ -79,10 +80,8 @@ class FileTransfer():
             warning("Fixed illegal block size:" + str(blocksize) + " Forsed to 60000 bytes.")
             blocksize = 60000
         self.blocksize = blocksize
+        self._tcp = socket
         super(FileTransfer, self).__init__()
-
-    def setsocket(self, sock):
-        self._tcp = sock
 
     def sendfile(self, path, sbs=False, alive=lambda: True,
         sleeptime=10):

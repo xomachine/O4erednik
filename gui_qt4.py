@@ -291,15 +291,15 @@ class TrayIcon(QSystemTrayIcon):
                     )
                 )
         if 'Visualiser executable file' in self.settings[jtype]:
-                started.addAction(
-                    _icons['run'],
-                    self.tr('Open in visualiser')
-                    ).triggered.connect(
-                        lambda: Popen([
-                            self.settings[jtype]['Visualiser executable file'],
-                            ofile
-                            ])
-                        )
+            started.addAction(
+                _icons['run'],
+                self.tr('Open in visualiser')
+                ).triggered.connect(
+                    lambda: Popen([
+                        self.settings[jtype]['Visualiser executable file'],
+                        ofile
+                        ])
+                    )
         started.addAction(
             _icons['run'],
             self.tr('Open in text editor')
