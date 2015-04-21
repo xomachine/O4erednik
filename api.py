@@ -53,9 +53,9 @@ class LogableThread(Thread):
 
 class FileTransfer():
     
-    FT_HEADERFORMAT = 'I'
+    FT_SIGNATURE = 455
+    FT_HEADERFORMAT = 'cI'
     FT_HEADERSIZE = calcsize(FT_HEADERFORMAT)
-    FT_PREHEADERSIZE = 1
     '''
     Header format: [char](?[integer])
     The [char] can be one of theese values:
@@ -86,78 +86,71 @@ class FileTransfer():
         if sbs and alive() and not isfile(path):
             sleep(sleeptime-2) # Wait for file avalibility for a few seconds, but leave 2 seconds for transfer routine
         if not isfile(path):
-            self._tcp.send(pack(self.FT_HEADERFORMAT, self.FT_ERROR, self.FT_SIGNATURE))
+            self.answer(self.FT_ERROR)
             return
         debug('Handshaking for ' + path)
         # Request for sending
-        self._tcp.send(self.FT_HANDSHAKE)
-        self._tcp.send(pack(self.FT_HEADERFORMAT, int(sbs)))
-        if self._tcp.recv(self.FT_PREHEADERSIZE) != self.FT_ACKNOLEDGE:
-            raise Exception('Handshake was refused by receiver!')
+        self._tcp.send(pack(self.FT_HEADERFORMAT, self.FT_HANDSHAKE, int(sbs)))
+        self.check_answer()
         with open(path, 'rb', buffering=0) as f:
             # Sending cycle
             while alive():
                 where = f.tell()
                 buf = f.read(blocksize)
                 if buf:
-                    self._tcp.send(self.FT_PORTION)
                     self._tcp.send(
-                        pack(self.FT_HEADERFORMAT, len(buf)))
-                    self._tcp.send(buf)
-                    if self._tcp.recv(self.FT_PREHEADERSIZE) != self.FT_ACKNOLEDGE:
-                        raise Exception('Handshake was refused by receiver!')
+                        pack(self.FT_HEADERFORMAT,self.FT_PORTION, len(buf)) + buf)
+                    self.check_answer()
                     buf = None
                 elif sbs:
-                    self._tcp.send(self.FT_SLEEP)
                     self._tcp.send(pack(
-                        self.FT_HEADERFORMAT, sleeptime))
+                        self.FT_HEADERFORMAT,self.FT_SLEEP, sleeptime))
                     sleep(sleeptime)
                     f.seek(where)
                 else:
                     break
-            self._tcp.send(self.FT_STOP)
+            self.answer(self.FT_STOP)
             debug('Completed ' + path)
             
-    def check_answer(self):
-        if self._tcp.recv(self.FT_PREHEADERSIZE) != self.FT_ACKNOLEDGE:
+    def check_answer(self, correct_answer=FT_ACKNOLEDGE):
+        answer = None
+        while (not answer): #Avoiding of zero-length answer
+            answer = self._tcp.recv(self.FT_HEADERSIZE)
+        ack, sign = unpack(self.FT_HEADERFORMAT, answer)
+        if  ack != correct_answer or sign != self.FT_SIGNATURE:
             raise Exception('Handshake was refused by receiver!')
             
-    def acknoledge(self):
-        self._tcp.send(self.FT_ACKNOLEDGE)
+    def answer(self, ans=FT_ACKNOLEDGE):
+        self._tcp.send(pack(self.FT_HEADERFORMAT, ans, self.FT_SIGNATURE))
         
-    def get_header(self):
-        header = self._tcp.recv(self.FT_HEADERSIZE)
-        return unpack(self.FT_HEADERFORMAT, header)[0]
 
     def recvfile(self, path, alive=lambda: True):
         # Waiting for handshake
-        preheader = self._tcp.recv(self.FT_PREHEADERSIZE)
+        header = self._tcp.recv(self.FT_HEADERSIZE)
+        preheader, sbs = unpack(self.FT_HEADERFORMAT, header)
         if preheader != self.FT_HANDSHAKE:
             return
-        header = self._tcp.recv(self.FT_HEADERSIZE)
-        sbs = bool(unpack(self.FT_HEADERFORMAT, header))
+        sbs = bool(sbs)
         debug('Got Handshake for ' + path)
         with open(path, 'wb+') as f:
             # Sending acknoledge of handshaking
-            self._tcp.send(self.FT_ACKNOLEDGE)
+            self.answer()
             while alive():
                 # Wait for data portion
-                preheader = self._tcp.recv(self.FT_PREHEADERSIZE)
-                if len(preheader) == 0:
+                header = self._tcp.recv(self.FT_HEADERSIZE)
+                if not header:
                     continue
-                
+                preheader, size = unpack(self.FT_HEADERFORMAT, header)
                 if preheader == self.FT_PORTION:
-                    size = self.get_header()
-                    #buff =  # Perhaps there is a performance issue
-                    f.write(self._tcp.recv(size))
-                    self._tcp.send(self.FT_ACKNOLEDGE)
+                    buff =  self._tcp.recv(size)# Perhaps there is a performance issue
+                    f.write(buff)
+                    self.answer()
                 elif preheader == self.FT_SLEEP:
-                    size = self.get_header()
                     sleep(size)
                 elif preheader == self.FT_STOP:
                     debug('Completed receiving ' + path)
                     return
                 else:
-                    self._tcp.send(self.FT_ERROR)
-            self._tcp.send(self.FT_STOP)
+                    self.answer(self.FT_ERROR)
+            self.answer(self.FT_STOP)
             debug('Done ' + path)
