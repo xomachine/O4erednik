@@ -20,7 +20,7 @@
 
 
 from threading import Thread
-from logging import exception, debug
+from logging import exception, debug, warning
 from os.path import isfile
 from struct import pack, unpack, calcsize
 from time import sleep
@@ -53,7 +53,7 @@ class LogableThread(Thread):
 
 class FileTransfer():
     
-    FT_SIGNATURE = 455
+    FT_SIGNATURE = 455 # Just a signature, perhaps can be used in future for version control
     FT_HEADERFORMAT = 'cI'
     FT_HEADERSIZE = calcsize(FT_HEADERFORMAT)
     '''
@@ -61,9 +61,8 @@ class FileTransfer():
     The [char] can be one of theese values:
     A =  Acknoledge of receiving data or command
     B =  Stop data transfer 
-    D =  Data transfer is done
     E =  An error occured
-    H =  Handshake synchronization request (if [integer] == 0 then step-by-step mode enabled)
+    H =  Handshake synchronization request (if bool([integer]) == True then step-by-step mode enabled)
     P =  Next message will be portion of data with length equals to [integer]
     W =  New portion of data still not avalible. Try again after [integer] seconds
     '''
@@ -83,9 +82,12 @@ class FileTransfer():
 
     def sendfile(self, path, blocksize=10240, sbs=False, alive=lambda: True,
         sleeptime=10):
+        if blocksize > 60000:
+            warning("Fixed illegal block size:" + str(blocksize) + " Forsed to 60000 bytes.")
+            blocksize = 60000
         if sbs and alive() and not isfile(path):
             sleep(sleeptime-2) # Wait for file avalibility for a few seconds, but leave 2 seconds for transfer routine
-        if not isfile(path):
+        if not isfile(path): # if file still does not exists, return with non fatal error
             self.answer(self.FT_ERROR)
             return
         debug('Handshaking for ' + path)
