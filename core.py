@@ -21,7 +21,7 @@
 
 from api import LogableThread, FileTransfer
 from json import loads, dumps
-from logging import debug, error, warning, exception
+from logging import debug, error, exception
 from os import kill, name as osname, makedirs, sep, _exit
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
@@ -140,7 +140,7 @@ class Processor(LogableThread):
             self.cur = None
 
 
-class RemoteReporter(LogableThread, FileTransfer):
+class RemoteReporter(LogableThread):
 
     def __init__(self, processor, shared, peer):
         super(RemoteReporter, self).__init__()
@@ -165,7 +165,8 @@ class RemoteReporter(LogableThread, FileTransfer):
             self._alive = False
             return
         self.tcp.settimeout(10)
-        self.setsocket(self.tcp)  # Setting socket for file transfer
+        # Setting socket for file transfer
+        self.filetransfer = FileTransfer(socket=self.tcp,blocksize=10240) 
         tcp.close()
         # Receive job class as it is
         try:
@@ -188,7 +189,7 @@ class RemoteReporter(LogableThread, FileTransfer):
                 makedirs(ldir, exist_ok=True)
                 self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
                 # Receive file to local path
-                self.recvfile(lpath)
+                self.filetransfer.recvfile(lpath)
             except:
                 exception('Error while obtaining job files')
                 self.stop()
@@ -234,7 +235,7 @@ remote job has been canceled''')
                 if self.tcp.recv(1) != b'O':
                     error('Unexpected answer during log streaming')
                     raise
-                self.sendfile(self.job.files['ofile'], sbs=True,
+                self.filetransfer.sendfile(self.job.files['ofile'], sbs=True,
                     alive=lambda: True if self.job is self.curproc() else False
                     )
         # Else just wait until job will be done
@@ -253,13 +254,13 @@ remote job has been canceled''')
                 ['T', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
             if self.tcp.recv(1) != b'O':
                 raise
-            self.sendfile(lpath)
+            self.filetransfer.sendfile(lpath)
         # Close connection
         self.tcp.send(dumps(['D', None]).encode('utf-8'))
         self.stop()
 
 
-class RemoteReceiver(LogableThread, FileTransfer):
+class RemoteReceiver(LogableThread):
 
     def __init__(self, shared, peer):
         super(RemoteReceiver, self).__init__()
@@ -279,7 +280,7 @@ class RemoteReceiver(LogableThread, FileTransfer):
             error('Unable to connect remote worker ' + self.peer)
             self.stop()
             return
-        self.setsocket(self.tcp)
+        self.filetransfer = FileTransfer(self.tcp, blocksize=10240)
         self.job = self.queue.get()
         debug("Job extracted: " + str(self.job.id))
 
@@ -311,16 +312,16 @@ class RemoteReceiver(LogableThread, FileTransfer):
             debug(bytees)
             req, param = loads(bytees.decode('utf-8'))
             if req == 'G':  # Get file
-                self.sendfile(param)
+                self.filetransfer.sendfile(param)
             elif req == 'T':  # Transfer file
                 self.tcp.send(b'O')
-                self.recvfile(param)
+                self.filetransfer.recvfile(param)
             elif req == 'W':  # Wait some seconds and req again
                 self.tcp.send(b'O')
                 sleep(param)
             elif req == 'S':  # Start streaming
                 self.tcp.send(b'O')
-                self.recvfile(param, lambda: True if self._alive else False)
+                self.filetransfer.recvfile(param, lambda: True if self._alive else False)
                 self.inform('done', str(self.job.id))
             elif req == 'D':  # All Done, job completed
                 if self.job.id > 0:

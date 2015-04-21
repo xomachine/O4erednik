@@ -74,17 +74,18 @@ class FileTransfer():
     FT_SLEEP = b'W'
     
 
-    def __init__(self):
+    def __init__(self, socket, blocksize=10240):
+        if blocksize > 60000:
+            warning("Fixed illegal block size:" + str(blocksize) + " Forsed to 60000 bytes.")
+            blocksize = 60000
+        self.blocksize = blocksize
         super(FileTransfer, self).__init__()
 
     def setsocket(self, sock):
         self._tcp = sock
 
-    def sendfile(self, path, blocksize=10240, sbs=False, alive=lambda: True,
+    def sendfile(self, path, sbs=False, alive=lambda: True,
         sleeptime=10):
-        if blocksize > 60000:
-            warning("Fixed illegal block size:" + str(blocksize) + " Forsed to 60000 bytes.")
-            blocksize = 60000
         if sbs and alive() and not isfile(path):
             sleep(sleeptime-2) # Wait for file avalibility for a few seconds, but leave 2 seconds for transfer routine
         if not isfile(path): # if file still does not exists, return with non fatal error
@@ -98,7 +99,7 @@ class FileTransfer():
             # Sending cycle
             while alive():
                 where = f.tell()
-                buf = f.read(blocksize)
+                buf = f.read(self.blocksize)
                 if buf:
                     self._tcp.send(
                         pack(self.FT_HEADERFORMAT,self.FT_PORTION, len(buf)) + buf)
