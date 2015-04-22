@@ -120,7 +120,7 @@ class FileTransfer():
             answer = self._tcp.recv(self.FT_HEADERSIZE)
         ack, sign = unpack(self.FT_HEADERFORMAT, answer)
         if  ack != correct_answer or sign != self.FT_SIGNATURE:
-            raise Exception('Handshake was refused by receiver!')
+            raise Exception('Message was refused by receiver!')
             
     def answer(self, ans=FT_ACKNOLEDGE):
         self._tcp.send(pack(self.FT_HEADERFORMAT, ans, self.FT_SIGNATURE))

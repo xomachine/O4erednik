@@ -220,7 +220,8 @@ remote job has been canceled''')
         # While job still in queue, receiver must wait
         while self.job in self.queue:
             self.tcp.send(dumps(['W', 10]).encode('utf-8'))
-            self.tcp.recv(1)
+            from codecs import encode
+            debug("Got message after W sent: " + encode(self.tcp.recv(1), 'hex'))
             sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # Job leaved queue, lets search it in processor
         # If output file has defined, stream it while job is in process
@@ -232,9 +233,14 @@ remote job has been canceled''')
                 self.tcp.send(dumps(
                     ['S', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
                 # Send log
-                if self.tcp.recv(1) != b'O':
-                    error('Unexpected answer during log streaming')
-                    raise
+                answer = self.tcp.recv(1)
+                if answer != b'O':
+                    error('Unexpected answer occured! next 40 bytes will be printed:')
+                    from codecs import encode
+                    ans = self.tcp.recv(40)
+                    debug(encode(ans, 'hex'))
+                    debug(ans)
+                    raise Exception('Unexpected answer during log streaming:' + str(ord(answer)))
                 self.filetransfer.sendfile(self.job.files['ofile'], sbs=True,
                     alive=lambda: True if self.job is self.curproc() else False
                     )
@@ -305,10 +311,12 @@ class RemoteReceiver(LogableThread):
             hn, other = gethostbyaddr(self.peer)
             self.inform('start', self.job, hn)
         except:
+            exception('Can not resolve remote worker name!')
             self.inform('start', self.job, self.peer)
         # Waiting for response from remote host
         while self._alive:
             bytees = self.tcp.recv(1024)
+            debug('Got message:')
             debug(bytees)
             req, param = loads(bytees.decode('utf-8'))
             if req == 'G':  # Get file
