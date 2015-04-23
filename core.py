@@ -249,7 +249,7 @@ remote job has been canceled''')
         while self.job in self.queue:
             self.tcp.send(make_header(RR_WAIT, calcsize('I'))+pack('I', 10))
             
-            debug("Got message after RR_WAIT sent: " + encode(self.tcp.recv(1), 'hex'))
+            debug("Got message after RR_WAIT sent: " + encode(self.tcp.recv(RR_HEADERSIZE), 'hex'))
             sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # Job leaved queue, lets search it in processor
         # If output file has defined, stream it while job is in process
@@ -264,7 +264,7 @@ remote job has been canceled''')
                 # Send log
                 answer,data = receive_data(self.tcp)
                 if answer != RR_OK:
-                    error('Unexpected answer occured! next 40 bytes will be printed:')
+                    error('Unexpected answer ' + str(answer) + ' occured! next 40 bytes will be printed:')
                     ans = self.tcp.recv(40)
                     debug(encode(ans, 'hex'))
                     debug(ans)
