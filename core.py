@@ -21,13 +21,15 @@
 
 from api import LogableThread, FileTransfer
 from json import loads, dumps
-from logging import debug, error, exception
+from logging import debug, error, exception, warning
 from os import kill, name as osname, makedirs, sep, _exit
 from os.path import dirname, basename
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, timeout, gethostbyaddr
 from time import sleep, monotonic
 from threading import Event, enumerate as threads
 from shutil import rmtree
+from struct import calcsize, pack, unpack
+from codecs import encode
 if osname == 'posix':
     from os import killpg
 
@@ -140,6 +142,28 @@ class Processor(LogableThread):
             self.cur = None
 
 
+
+RR_HEADERFORMAT = 'cH'
+RR_HEADERSIZE = calcsize(RR_HEADERFORMAT)
+RR_WAIT = b'W'
+RR_STREAM = b'S'
+RR_GET = b'G'
+RR_TRANSFER = b'T'
+RR_OK = b'O'
+RR_DONE = b'D'
+
+def make_header(req, data=None):
+    if len(data) > 60000:
+        raise Exception('Data is too long to send it! data:' + str(data))
+    return pack(RR_HEADERFORMAT, req, len(data))
+    
+def receive_data(soc):
+    answer = soc.recv(RR_HEADERSIZE)
+    ok, size = unpack(RR_HEADERFORMAT, answer)
+    return ok, soc.recv(size)
+    
+
+
 class RemoteReporter(LogableThread):
 
     def __init__(self, processor, shared, peer):
@@ -187,7 +211,7 @@ class RemoteReporter(LogableThread):
             # Make directory
             try:
                 makedirs(ldir, exist_ok=True)
-                self.tcp.send(dumps(['G', rpath]).encode('utf-8'))
+                self.tcp.send(make_header(RR_GET, rpath) + rpath.encode('utf-8'))
                 # Receive file to local path
                 self.filetransfer.recvfile(lpath)
             except:
@@ -219,9 +243,9 @@ remote job has been canceled''')
     def run(self):
         # While job still in queue, receiver must wait
         while self.job in self.queue:
-            self.tcp.send(dumps(['W', 10]).encode('utf-8'))
-            from codecs import encode
-            debug("Got message after W sent: " + encode(self.tcp.recv(1), 'hex'))
+            self.tcp.send(make_header(RR_WAIT, calcsize('I'))+pack('I', 10))
+            
+            debug("Got message after RR_WAIT sent: " + encode(self.tcp.recv(1), 'hex'))
             sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # Job leaved queue, lets search it in processor
         # If output file has defined, stream it while job is in process
@@ -230,25 +254,27 @@ remote job has been canceled''')
                 ldir, name = self.job.files['ofile'].rsplit(sep, 1)
                 # Split and translate path to remote dir
                 # Request sending log step by step to remote path
-                self.tcp.send(dumps(
-                    ['S', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
+                ddir = self.eqdirs[ldir] + sep + name
+                self.tcp.send(make_header(
+                    RR_STREAM, len(ddir)) + ddir.encode('utf-8'))
                 # Send log
-                answer = self.tcp.recv(1)
-                if answer != b'O':
+                answer,data = receive_data(self.tcp)
+                if answer != RR_OK:
                     error('Unexpected answer occured! next 40 bytes will be printed:')
-                    from codecs import encode
                     ans = self.tcp.recv(40)
                     debug(encode(ans, 'hex'))
                     debug(ans)
-                    raise Exception('Unexpected answer during log streaming:' + str(ord(answer)))
+                    raise Exception('Unexpected answer during log streaming:' + str(answer))
                 self.filetransfer.sendfile(self.job.files['ofile'], sbs=True,
                     alive=lambda: True if self.job is self.curproc() else False
                     )
         # Else just wait until job will be done
         else:
             while self.job == self.curproc():
-                self.tcp.send(dumps(['W', 10]).encode('utf-8'))
-                self.tcp.recv(1)
+                self.tcp.send(make_header(RR_WAIT, calcsize('I'))+pack('I', 10))
+                answer, data = receive_data(self.tcp)
+                if answer != RR_OK:
+                    raise Exception('Unexpected answer during log streaming:' + str(answer))
                 sleep(10)  # OPTIMIZE: Find optimal sleep interval
         # After job completion send results back
         for lpath in self.job.files.values():
@@ -256,13 +282,15 @@ remote job has been canceled''')
             ldir, name = lpath.rsplit(sep, 1)
             # Translate local dir to remote dir,
             # request and send file
-            self.tcp.send(dumps(
-                ['T', self.eqdirs[ldir] + sep + name]).encode('utf-8'))
-            if self.tcp.recv(1) != b'O':
-                raise
+            ddir = self.eqdirs[ldir] + sep + name
+            self.tcp.send(make_header(
+                RR_TRANSFER, ddir) + ddir.encode('utf-8'))
+            answer, data = receive_data(self.tcp)
+            if answer != RR_OK:
+                raise Exception('Unexpected answer: ' + str(answer) + ' Instead of RR_OK!')
             self.filetransfer.sendfile(lpath)
         # Close connection
-        self.tcp.send(dumps(['D', None]).encode('utf-8'))
+        self.tcp.send(make_header(RR_DONE))
         self.stop()
 
 
@@ -315,33 +343,28 @@ class RemoteReceiver(LogableThread):
             self.inform('start', self.job, self.peer)
         # Waiting for response from remote host
         while self._alive:
-            bytees = self.tcp.recv(1024)
-            debug('Got message:')
-            debug(bytees)
-            req, param = loads(bytees.decode('utf-8'))
-            if req == 'G':  # Get file
-                self.filetransfer.sendfile(param)
-            elif req == 'T':  # Transfer file
-                self.tcp.send(b'O')
-                self.filetransfer.recvfile(param)
-            elif req == 'W':  # Wait some seconds and req again
-                self.tcp.send(b'O')
-                sleep(param)
-            elif req == 'S':  # Start streaming
-                self.tcp.send(b'O')
-                self.filetransfer.recvfile(param, lambda: True if self._alive else False)
+            req, data = receive_data(self.tcp)
+            if req == RR_GET:  # Get file
+                self.filetransfer.sendfile(data.decode('utf8'))
+            elif req == RR_TRANSFER:  # Transfer file
+                self.tcp.send(make_header(RR_OK))
+                self.filetransfer.recvfile(data.decode('utf8'))
+            elif req == RR_WAIT:  # Wait some seconds and req again
+                self.tcp.send(make_header(RR_OK))
+                sleep(unpack(data, 'I')[0])
+            elif req == RR_STREAM:  # Start streaming
+                self.tcp.send(make_header(RR_OK))
+                self.filetransfer.recvfile(data.decode('utf8'), lambda: True if self._alive else False)
                 self.inform('done', str(self.job.id))
-            elif req == 'D':  # All Done, job completed
+            elif req == RR_DONE:  # All Done, job completed
                 if self.job.id > 0:
                     try:
                         kill(self.job.id, 9)
                     except:
-                        pass
+                        warning('Can not kill job:' + str(self.job.id))
                 self.stop()
             else:
-                error('Unexpected response:' + req)
-                self.exception()
-                return
+                raise Exception('Unexpected response:' + req)
         if self._alive is False:  # Sharing process end
             debug('Closing ' + self.name)
             self.tcp.close()
