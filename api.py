@@ -102,7 +102,7 @@ class FileTransfer():
                 where = f.tell()
                 buf = f.read(self.blocksize)
                 if buf:
-                    debug('Portion with len ' + len(buf) + ' will be sent')
+                    debug('Portion with len ' + str(len(buf)) + ' will be sent')
                     self._tcp.send(
                         pack(self.FT_HEADERFORMAT,self.FT_PORTION, len(buf)) + buf)
                     self.check_answer()
