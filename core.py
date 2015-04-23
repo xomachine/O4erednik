@@ -143,7 +143,7 @@ class Processor(LogableThread):
 
 
 
-RR_HEADERFORMAT = 'cH'
+RR_HEADERFORMAT = 'cI'
 RR_HEADERSIZE = calcsize(RR_HEADERFORMAT)
 RR_WAIT = b'W'
 RR_STREAM = b'S'
@@ -153,9 +153,13 @@ RR_OK = b'O'
 RR_DONE = b'D'
 
 def make_header(req, data=None):
-    if len(data) > 60000:
+    if type(data) is int and data < 60000:
+        length = calcsize('I')
+    else:
+        length = len(data)
+    if length > 60000:
         raise Exception('Data is too long to send it! data:' + str(data))
-    return pack(RR_HEADERFORMAT, req, len(data))
+    return pack(RR_HEADERFORMAT, req, length)
     
 def receive_data(soc):
     answer = soc.recv(RR_HEADERSIZE)
