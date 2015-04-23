@@ -151,10 +151,14 @@ class FileTransfer():
                 preheader, size = unpack(self.FT_HEADERFORMAT, header)
                 if preheader == self.FT_PORTION:
                     debug('Portion with size ' + str(size) + ' will be received')
-                    buff =  self._tcp.recv(size)# Perhaps there is a performance issue
-                    debug('Received ' + str(len(buff)) + ' bytes')
-                    f.write(buff)
-                    buff = None
+                    while size > 0:
+                        buff =  self._tcp.recv(size)# Perhaps there is a performance issue
+                        size -= len(buff)
+                        debug('Received ' + str(len(buff)) + ' bytes')
+                        f.write(buff)
+                        buff = None
+                    if size < 0:
+                        raise Exception('Size lower than 0! Should never happened!')
                     self.answer()
                 elif preheader == self.FT_SLEEP:
                     debug('Sleeping... ' + str(size) + ' seconds')
