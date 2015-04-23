@@ -87,13 +87,13 @@ class FileTransfer():
         sleeptime=10):
         if sbs and alive() and not isfile(path):
             sleep(sleeptime-2) # Wait for file avalibility for a few seconds, but leave 2 seconds for transfer routine
-        if not isfile(path): # if file still does not exists, return with non fatal error
-            self.answer(self.FT_ERROR)
-            return
         debug('Handshaking for ' + path)
         # Request for sending
         self._tcp.send(pack(self.FT_HEADERFORMAT, self.FT_HANDSHAKE, int(sbs)))
         self.check_answer()
+        if not isfile(path): # if file still does not exists, return with non fatal error
+            self.answer(self.FT_ERROR)
+            return
         with open(path, 'rb', buffering=0) as f:
             # Sending cycle
             while alive():
@@ -131,7 +131,7 @@ class FileTransfer():
         header = self._tcp.recv(self.FT_HEADERSIZE)
         preheader, sbs = unpack(self.FT_HEADERFORMAT, header)
         if preheader != self.FT_HANDSHAKE:
-            return
+            Exception('FT_HANDSHAKE expected, ' + str(preheader) + ' received')
         sbs = bool(sbs)
         debug('Got Handshake for ' + path)
         with open(path, 'wb+') as f:
@@ -151,6 +151,8 @@ class FileTransfer():
                     sleep(size)
                 elif preheader == self.FT_STOP:
                     debug('Completed receiving ' + path)
+                    return
+                elif preheader == self.FT_ERROR:
                     return
                 else:
                     self.answer(self.FT_ERROR)
