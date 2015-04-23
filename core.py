@@ -264,8 +264,11 @@ remote job has been canceled''')
                 # Send log
                 answer,data = receive_data(self.tcp)
                 if answer != RR_OK:
-                    error('Unexpected answer ' + str(answer) + ' occured! next 40 bytes will be printed:')
-                    ans = self.tcp.recv(40)
+                    error('Unexpected answer ' + str(answer) + ' with data: ' + str(data) + ' occured! next 40 bytes will be printed:')
+                    try:
+                        ans = self.tcp.recv(40)
+                    except:
+                        pass
                     debug(encode(ans, 'hex'))
                     debug(ans)
                     raise Exception('Unexpected answer during log streaming:' + str(answer))
