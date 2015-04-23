@@ -155,6 +155,8 @@ RR_DONE = b'D'
 def make_header(req, data=None):
     if type(data) is int and data < 60000:
         length = calcsize('I')
+    elif data is None:
+        length = 0
     else:
         length = len(data)
     if length > 60000:
