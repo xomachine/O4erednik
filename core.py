@@ -161,6 +161,7 @@ def make_header(req, data=None):
         length = len(data)
     if length > 60000:
         raise Exception('Data is too long to send it! data:' + str(data))
+    debug('Header ' + str(req) + ' was made for data: ' + str(data) + ', with length: ' + str(length))
     return pack(RR_HEADERFORMAT, req, length)
     
 def receive_data(soc):
