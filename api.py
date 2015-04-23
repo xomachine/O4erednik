@@ -102,6 +102,7 @@ class FileTransfer():
                 where = f.tell()
                 buf = f.read(self.blocksize)
                 if buf:
+                    debug('Portion with len ' + len(buf) + ' will be sent')
                     self._tcp.send(
                         pack(self.FT_HEADERFORMAT,self.FT_PORTION, len(buf)) + buf)
                     self.check_answer()
@@ -149,10 +150,14 @@ class FileTransfer():
                     continue
                 preheader, size = unpack(self.FT_HEADERFORMAT, header)
                 if preheader == self.FT_PORTION:
+                    debug('Portion with size ' + str(size) + ' will be received')
                     buff =  self._tcp.recv(size)# Perhaps there is a performance issue
+                    debug('Received ' + str(len(buff)) + ' bytes')
                     f.write(buff)
+                    buff = None
                     self.answer()
                 elif preheader == self.FT_SLEEP:
+                    debug('Sleeping... ' + str(size) + ' seconds')
                     sleep(size)
                 elif preheader == self.FT_STOP:
                     debug('Completed receiving ' + path)
@@ -160,6 +165,7 @@ class FileTransfer():
                 elif preheader == self.FT_ERROR:
                     return
                 else:
+                    warning('Unexpected answer!')
                     self.answer(self.FT_ERROR)
             self.answer(self.FT_STOP)
             debug('Done ' + path)
