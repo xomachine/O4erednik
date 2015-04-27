@@ -261,9 +261,9 @@ remote job has been canceled''')
                 ldir, name = self.job.files['ofile'].rsplit(sep, 1)
                 # Split and translate path to remote dir
                 # Request sending log step by step to remote path
-                ddir = self.eqdirs[ldir] + sep + name
+                ddir = (self.eqdirs[ldir] + sep + name).encode('utf-8')
                 self.tcp.send(make_header(
-                    RR_STREAM, len(ddir)) + ddir.encode('utf-8'))
+                    RR_STREAM, ddir) + ddir)
                 # Send log
                 answer,data = receive_data(self.tcp)
                 if answer != RR_OK:
