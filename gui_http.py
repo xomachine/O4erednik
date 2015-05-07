@@ -107,7 +107,7 @@ class Backend():
             'done': self.sDone,
             }
         self.handler = HTTPHandler
-        self.handler.getinfo = lambda : (self.qnames, self.runningnow, self.recent)
+        self.handler.getinfo = lambda x: (self.qnames, self.runningnow, self.recent)
         
 
     def run(self, server_class=HTTPServer):
