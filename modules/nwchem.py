@@ -46,27 +46,47 @@ class Module():
 
     def register(self, job):
         ifile = job.files['ifile']
+        idir = dirname(job.files['ifile'])
         let = "f"
-        job.params["prefix"] = ifile[:-2]
+        job.params["prefix"] = ifile[:-2] # Prefix contains "."
         if not isfile(ifile):
             return False
         if not 'ofile' in job.files:
             job.files['ofile'] = job.params["prefix"] + "out"
+        if not 'movecs' in job.files:
+            job.files['movecs'] = job.params['prefix'] + 'movecs'
+        out_i = 0
         with open(ifile, 'r') as f:
             lines = f.readlines()
             for buf in lines:
                 sbuf = buf.lstrip()
-                if sbuf.lower().startswith('start'):
-                    job.params['prefix'] = sbuf[5:-1].lstrip().rstrip()
+                if sbuf.lower().startswith('start') or sbuf.lower().startswith('restart'):
+                    tokens = sbuf.split()
+                    if len(tokens) == 2:
+                        job.params['prefix'] = tokens[1]
                 elif sbuf.lower().startswith('backward'):
                     let = "b"
                 elif sbuf.lower().startswith('xyz'):
-                    xyz = sbuf[3:-1].lstrip().rstrip()
-                    if len(xyz) > 0:
-                        job.files['xyz'] = xyz + "."+let+"xyz"
+                    tokens = sbuf.split()
+                    if len(tokens) < 2:
+                        continue
+                    xyz = tokens[1]
+                    if len(tokens[0]) > 3:
+                        job.files['xyz_path'] = idir + sep + xyz
+                    elif len(xyz) > 0:
+                        job.files['xyz'] = idir + sep + xyz + "."+let+"xyz"
                     else:
                         if 'prefix' in job.params:
                             job.files['xyz'] = job.params['prefix'] +let+"xyz"
+                elif sbuf.lower().startswith('output'):
+                    output = sbuf[6:-1].lstrip().rstrip()
+                    job.files['out'+ str(out_i)] = idir + sep + output
+                    out_i += 1
+                elif sbuf.lower().startswith('vectors'):
+                    tokens = sbuf.split()
+                    if len(tokens) == 2:
+                        job.files['movecs'] = idir + sep + tokens[1]
+
         return job
         #TODO: add register temp files if needed
 
