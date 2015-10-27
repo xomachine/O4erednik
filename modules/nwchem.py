@@ -51,12 +51,6 @@ class Module():
         job.params["prefix"] = ifile[:-2] # Prefix contains "."
         if not isfile(ifile):
             return False
-        if not 'ofile' in job.files:
-            job.files['ofile'] = job.params["prefix"] + "out"
-        if not 'movecs' in job.files:
-            job.files['movecs'] = job.params['prefix'] + 'movecs'
-        if not 'db' in job.files:
-            job.files['db'] = job.params['prefix'] + 'db'
         out_i = 0
         with open(ifile, 'r') as f:
             lines = f.readlines()
@@ -88,7 +82,12 @@ class Module():
                     tokens = sbuf.split()
                     if len(tokens) == 2:
                         job.files['movecs'] = idir + sep + tokens[1]
-
+        if not 'ofile' in job.files:
+            job.files['ofile'] = job.params["prefix"] + "out"
+        if not 'movecs' in job.files:
+            job.files['movecs'] = job.params['prefix'] + 'movecs'
+        if not 'db' in job.files:
+            job.files['db'] = job.params['prefix'] + 'db'
         return job
         #TODO: add register temp files if needed
 
