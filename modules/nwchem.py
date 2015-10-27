@@ -55,6 +55,8 @@ class Module():
             job.files['ofile'] = job.params["prefix"] + "out"
         if not 'movecs' in job.files:
             job.files['movecs'] = job.params['prefix'] + 'movecs'
+        if not 'db' in job.files:
+            job.files['db'] = job.params['prefix'] + 'db'
         out_i = 0
         with open(ifile, 'r') as f:
             lines = f.readlines()
