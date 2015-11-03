@@ -112,7 +112,7 @@ class Module():
         # CHECKME test mpi sharing
         cmd = self.nwset['MPI executable file'] +\
         ' -n ' + procs + ' ' + nodes + ' --hetero-nodes' +\
-        ' ' + self.nwset['nwchem executable file'] + ' ' + ifile + ' &> ' +\
+        ' ' + self.nwset['nwchem executable file'] + ' "' + ifile + '" &> ' +\
         job.files['ofile']
         debug("Executing: " + cmd)
         # Execution
