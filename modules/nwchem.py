@@ -18,7 +18,7 @@
     Copyright 2014 Fomichev Dmitriy
 '''
 
-from logging import error
+from logging import error, debug
 from os.path import isfile, dirname, sep, basename
 from subprocess import Popen
 from os import name as osname
@@ -114,6 +114,7 @@ class Module():
         ' -n ' + procs + ' ' + nodes + ' --hetero-nodes' +\
         ' ' + self.nwset['nwchem executable file'] + ' ' + ifile + ' > ' +\
         job.files['ofile']
+        debug("Executing: " + cmd)
         # Execution
         proc = Popen(
             [cmd],
