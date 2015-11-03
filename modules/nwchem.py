@@ -59,7 +59,7 @@ class Module():
                 if sbuf.lower().startswith('start') or sbuf.lower().startswith('restart'):
                     tokens = sbuf.split()
                     if len(tokens) == 2:
-                        job.params['prefix'] = tokens[1]
+                        job.params['prefix'] = tokens[1] + "."
                 elif sbuf.lower().startswith('backward'):
                     let = "b"
                 elif sbuf.lower().startswith('xyz'):
