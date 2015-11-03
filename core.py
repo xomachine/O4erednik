@@ -487,7 +487,10 @@ class UDPServer(LogableThread):
         self.queue.put(job)
         self.shared.freeze(self.processor)
         if job.id > 0:
-            kill(job.id, 19)
+            try:
+                kill(job.id, 19)
+            except:
+                pass
 
     # Possibility to share work
     def mFree(self, params, peer):
