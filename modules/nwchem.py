@@ -88,6 +88,8 @@ class Module():
             job.files['movecs'] = job.params['prefix'] + 'movecs'
         if not 'db' in job.files:
             job.files['db'] = job.params['prefix'] + 'db'
+        if not 'hess' in job.files:
+            job.files['hess'] = job.params['prefix'] + 'hess'
         return job
         #TODO: add register temp files if needed
 

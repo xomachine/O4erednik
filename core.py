@@ -403,7 +403,8 @@ class UDPServer(LogableThread):
             'L': self.mLFF,
             'K': self.mKill,
             'S': self.mShare,
-            'E': self.mExit
+            'E': self.mExit,
+            'R': self.mRequest #new
             }
 
     def alloc_nodes(self, nprocs):
@@ -548,3 +549,16 @@ class UDPServer(LogableThread):
     def mExit(self, params, peer):
         self.shared.freeze(self.processor)
         _exit(0)
+
+    def mRequest(self, params, peer):
+        if self.processor.cur is None:
+            curjob = None
+        else:
+            curjob = self.processor.cur.__dict__
+        queue = {}
+        for i, job in enumerate(self.queue):
+            queue[i] = job.__dict__
+        self.udp.sendto(
+            dumps(['Q', [queue, curjob]]).encode('utf-8'),
+            (peer, 50000)
+            )

@@ -156,5 +156,3 @@ class Backend():
             self.runningnow[job.id] = (job.files['ifile'], target)
         else:
             self.runningnow[job.id] = ('Error in obtaining ifile', target)
-
-            
