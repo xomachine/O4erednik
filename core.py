@@ -478,6 +478,9 @@ class UDPServer(LogableThread):
         job = Job(*params)
         if job.type in self.shared.modules:
             job = self.shared.modules[job.type].register(job)
+        if not job:
+            debug("Failed to register a job!")
+            return
         if self.processor.cur:  # Look For Free if processor is already busy
             self.udp.sendto(
                 dumps(['L', None]).encode('utf-8'),

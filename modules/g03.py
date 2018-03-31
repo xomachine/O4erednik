@@ -22,6 +22,7 @@
 from os.path import isdir, isfile, dirname
 from os import name as osname, environ
 from subprocess import Popen
+from logging import warning
 if osname == 'posix':
     from os import setsid
 
@@ -46,6 +47,7 @@ class Module():
     def register(self, job):
         ifile = job.files['ifile']
         if not isfile(ifile):
+            warning("File not found: " + str(ifile))
             return False
         if not 'ofile' in job.files:
             job.files['ofile'] = ifile[:-3] + "log"
