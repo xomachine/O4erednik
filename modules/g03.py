@@ -101,9 +101,12 @@ class Module():
             for buf in wlines:
                 f.write(buf)
         # Execution
-        proc = Popen(
-            [self.g03set['G03 executable file'], ifile],
-            cwd=dirname(ifile),
-            preexec_fn=setsid
-            )
-        return proc
+        try:
+          proc = Popen(
+              [self.g03set['G03 executable file'], ifile],
+              cwd=dirname(ifile),
+              preexec_fn=setsid
+              )
+          return proc
+        except:
+          warning("Can not start a process!")
